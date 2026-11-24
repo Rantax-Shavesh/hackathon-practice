@@ -1,0 +1,13 @@
+{
+  "$schema": "https://app.kilo.ai/config.json",
+  "agent": {
+    "code": {
+      "temperature": 0.2,
+      "prompt": "Make small, surgical edits scoped to the requested task. Never rewrite unrelated files. Explain changes briefly and verify there are no syntax or runtime errors."
+    },
+    "plan": {
+      "temperature": 0.3,
+      "prompt": "Break tasks into small, testable milestones before writing code. Keep edge cases, security, and scalability in mind."
+    }
+  }
+}
