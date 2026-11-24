@@ -20,6 +20,8 @@
       --danger: #ef4444;
       --par-under: #22c55e;
       --par-over: #f43f5e;
+      --sound-on: #22c55e;
+      --sound-off: #ef4444;
     }
     * { box-sizing: border-box; margin: 0; padding: 0; }
     html, body { height: 100%; }
@@ -30,6 +32,7 @@
       line-height: 1.5;
       -webkit-font-smoothing: antialiased;
       overflow: hidden;
+      touch-action: none;
     }
     header {
       padding: 1rem 1.25rem;
@@ -53,9 +56,17 @@
       z-index: 12;
     }
     .seed-pill b { color: var(--text); }
-    .seed-pill .mode { cursor: pointer; padding: 0.1rem 0.5rem; border-radius: 6px; font-size: 0.7rem; font-weight: 600; }
+    .seed-pill .mode { cursor: pointer; padding: 0.1rem 0.5rem; border-radius: 6px; font-size: 0.7rem; font-weight: 600; user-select: none; }
     .seed-pill .mode.active { background: var(--accent); color: #00222a; }
     .seed-pill .mode:hover { background: #334155; }
+    .sound-toggle {
+      cursor: pointer; padding: 0.15rem 0.5rem; border-radius: 6px;
+      font-size: 0.7rem; font-weight: 600; border: 1px solid var(--border);
+      color: var(--text); background: var(--panel); user-select: none;
+    }
+    .sound-toggle:hover { border-color: var(--accent); }
+    .sound-toggle.on { color: var(--sound-on); border-color: var(--sound-on); }
+    .sound-toggle.off { color: var(--sound-off); border-color: var(--sound-off); }
     .app {
       display: flex;
       flex-direction: column;
@@ -78,7 +89,8 @@
       border-radius: 10px;
       display: block;
       max-width: 100%;
-      max-height: calc(100vh - 160px);
+      max-height: calc(100vh - 170px);
+      touch-action: none;
     }
     .hud {
       position: absolute;
@@ -86,8 +98,8 @@
       left: 1rem;
       right: 1rem;
       display: grid;
-      grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
-      gap: 0.75rem;
+      grid-template-columns: repeat(auto-fit, minmax(130px, 1fr));
+      gap: 0.6rem;
       pointer-events: none;
       z-index: 5;
     }
@@ -95,12 +107,12 @@
       background: var(--panel);
       border: 1px solid var(--border);
       border-radius: 8px;
-      padding: 0.6rem 0.75rem;
+      padding: 0.55rem 0.7rem;
       pointer-events: auto;
     }
-    .stat b { color: var(--text); display: block; font-size: 1.15rem; font-variant-numeric: tabular-nums; }
-    .stat .label { color: var(--muted); font-size: 0.75rem; text-transform: uppercase; letter-spacing: 0.05em; }
-    .status { grid-column: 1 / -1; text-align: center; font-weight: 600; font-size: 0.95rem; }
+    .stat b { color: var(--text); display: block; font-size: 1.1rem; font-variant-numeric: tabular-nums; }
+    .stat .label { color: var(--muted); font-size: 0.7rem; text-transform: uppercase; letter-spacing: 0.05em; }
+    .status { grid-column: 1 / -1; text-align: center; font-weight: 600; font-size: 0.9rem; }
     .status.win { color: var(--target); }
     .status.hint { color: var(--muted); }
     .status.danger { color: var(--hazard); }
@@ -110,7 +122,7 @@
       border-radius: 10px;
       padding: 1rem;
       margin: 1rem auto 0;
-      max-width: 560px;
+      max-width: 600px;
       display: flex;
       flex-direction: column;
       gap: 0.75rem;
@@ -123,11 +135,12 @@
       color: var(--text);
       border-radius: 6px;
       padding: 0.35rem 0.6rem;
-      font-size: 0.8rem;
+      font-size: 0.78rem;
       font-weight: 600;
     }
-    .actions { display: flex; gap: 0.5rem; }
-    .actions button { flex: 1; border-radius: 8px; padding: 0.65rem; font-weight: 600; font-size: 0.9rem; cursor: pointer; border: none; }
+    .key .kbd { font-size: 0.7rem; opacity: 0.7; margin-left: 0.25rem; }
+    .actions { display: flex; gap: 0.5rem; flex-wrap: wrap; }
+    .actions button { border-radius: 8px; padding: 0.65rem 0.9rem; font-weight: 600; font-size: 0.9rem; cursor: pointer; border: none; flex: 1; min-width: 90px; }
     .pulse { background: var(--accent); color: #00222a; }
     .pulse:hover { opacity: 0.9; }
     .pulse:disabled { opacity: 0.5; cursor: not-allowed; }
@@ -149,7 +162,8 @@
     .overlay.show { display: flex; }
     .overlay h2 { font-size: 1.5rem; color: var(--target); margin-bottom: 0.25rem; }
     .overlay p { color: var(--muted); font-size: 0.9rem; margin: 0.25rem 0; }
-    .overlay .actions { margin-top: 0.5rem; width: 100%; }
+    .overlay .actions { margin-top: 0.5rem; width: 100%; display: flex; gap: 0.5rem; }
+    .overlay .actions button { flex: 1; }
     .summary {
       background: #0b1016;
       border: 1px solid var(--border);
@@ -167,24 +181,58 @@
     .copy-wrap input { flex: 1; background: #0b1016; border: 1px solid var(--border); color: var(--text); border-radius: 6px; padding: 0.45rem 0.6rem; font-size: 0.75rem; font-family: ui-monospace, SFMono-Regular, Menlo, monospace; }
     .copy-wrap button { flex: 0 0 auto; border-radius: 6px; padding: 0.45rem 0.75rem; font-weight: 600; font-size: 0.8rem; cursor: pointer; border: none; background: var(--accent); color: #00222a; }
     .copy-wrap button:hover { opacity: 0.9; }
+    /* Touch controls (shown on touch-capable / small screens) */
+    .touch-wrap {
+      position: absolute; bottom: 1rem; left: 1rem; right: 1rem;
+      display: flex; gap: 1rem; justify-content: center; align-items: flex-end;
+      pointer-events: none; z-index: 8;
+    }
+    .dpad {
+      display: grid; grid-template-columns: 60px 60px 60px; grid-template-rows: 60px 60px;
+      gap: 8px; pointer-events: auto; background: var(--panel);
+      border: 1px solid var(--border); border-radius: 10px; padding: 8px;
+    }
+    .dpad button { width: 60px; height: 60px; border: none; border-radius: 8px;
+      background: #0b1016; color: var(--text); font-size: 1.4rem; cursor: pointer;
+      display: flex; align-items: center; justify-content: center; }
+    .dpad button:active { background: var(--accent); color: #00222a; }
+    .dpad .up { grid-column: 2; grid-row: 1; }
+    .dpad .left { grid-column: 1; grid-row: 2; }
+    .dpad .down { grid-column: 2; grid-row: 2; }
+    .dpad .right { grid-column: 3; grid-row: 2; }
+    .touch-pulse {
+      pointer-events: auto; width: 70px; height: 70px; border-radius: 50%;
+      background: var(--accent); color: #00222a; border: none;
+      font-weight: 700; font-size: 0.9rem; cursor: pointer;
+      display: flex; align-items: center; justify-content: center; flex-direction: column;
+      box-shadow: 0 0 20px rgba(34,211,238,0.35);
+    }
+    .touch-pulse:active { opacity: 0.85; }
+    .touch-pulse span { font-size: 0.65rem; opacity: 0.8; }
+    .no-touch .touch-wrap { display: none !important; }
     @media (max-width: 640px) {
       header { padding: 0.75rem 1rem; }
       .seed-pill { top: 0.75rem; right: 1rem; font-size: 0.7rem; }
       .arena-wrap { padding: 0.5rem; }
       .controls { margin: 0.75rem auto 0; padding: 0.85rem; }
       .overlay { padding: 1rem; width: 90%; }
+      canvas { max-height: calc(100vh - 330px); }
+    }
+    @media (pointer: coarse) or (max-width: 640px) {
+      body { touch-action: none; }
     }
   </style>
 </head>
 <body>
   <header>
     <h1>Daily Sonar &amp; Dead-Reckoning Puzzle</h1>
-    <p>Milestone 3 &bull; Navigate by sonar &bull; Avoid hazards &bull; Find the beacon</p>
+    <p>Milestone 4 &bull; Navigate by sonar &bull; Avoid hazards &bull; Find the beacon</p>
     <div class="seed-pill">
       <span>Seed:</span>
       <b id="dSeed">--</b>
       <span class="mode active" id="modeDaily" data-mode="daily">Daily</span>
       <span class="mode" id="modePractice" data-mode="practice">Practice</span>
+      <button class="sound-toggle on" id="btnSound" title="Toggle sound">&#128266;</button>
     </div>
   </header>
   <div class="app">
@@ -213,17 +261,34 @@
           <input id="sCopy" readonly>
           <button id="btnCopy">Copy</button>
         </div>
-        <div class="actions" style="width:100%">
+        <div class="actions">
           <button class="pulse" id="btnNext">Next Puzzle</button>
           <button class="reset" id="btnClose">Close</button>
         </div>
+      </div>
+      <div class="touch-wrap no-touch">
+        <div class="dpad">
+          <button class="up" data-dir="up">&#8593;</button>
+          <button class="left" data-dir="left">&#8592;</button>
+          <button class="down" data-dir="down">&#8595;</button>
+          <button class="right" data-dir="right">&#8594;</button>
+        </div>
+        <button class="touch-pulse" id="btnTouchPulse">
+          <span>PULSE</span>
+        </button>
       </div>
     </div>
     <div class="controls">
       <h2>Controls</h2>
       <div class="keys">
-        <span class="key">&#8593;/W</span><span class="key">&#8595;/S</span><span class="key">&#8592;/A</span><span class="key">&#8594;/D</span>
-        <span class="key">Space</span><span class="key">Click</span>
+        <span class="key">&#8593;/W <span class="kbd">Thrust</span></span>
+        <span class="key">&#8595;/S <span class="kbd">Reverse</span></span>
+        <span class="key">&#8592;/A <span class="kbd">Turn left</span></span>
+        <span class="key">&#8594;/D <span class="kbd">Turn right</span></span>
+        <span class="key">Space <span class="kbd">Pulse</span></span>
+        <span class="key">R <span class="kbd">Reset</span></span>
+        <span class="key">P <span class="kbd">Pulse</span></span>
+        <span class="key">M <span class="kbd">Mute</span></span>
       </div>
       <div class="actions">
         <button class="pulse" id="btnPulse">Send Sonar Pulse</button>
@@ -249,6 +314,7 @@
       const dSeed = document.getElementById('dSeed');
       const modeDaily = document.getElementById('modeDaily');
       const modePractice = document.getElementById('modePractice');
+      const btnSound = document.getElementById('btnSound');
       const winOverlay = document.getElementById('winOverlay');
       const winTitle = document.getElementById('winTitle');
       const winMsg = document.getElementById('winMsg');
@@ -265,10 +331,13 @@
       const btnReset = document.getElementById('btnReset');
       const btnNext = document.getElementById('btnNext');
       const btnClose = document.getElementById('btnClose');
+      const btnTouchPulse = document.getElementById('btnTouchPulse');
+      const dpadButtons = document.querySelectorAll('.dpad button');
 
       const LS_SCORE = 'sonar_best_score';
       const LS_STREAK = 'sonar_streak';
       const LS_BEST_STREAK = 'sonar_best_streak';
+      const LS_SOUND = 'sonar_sound';
 
       let bestScore = localStorage.getItem(LS_SCORE);
       bestScore = bestScore ? Number(bestScore) : null;
@@ -276,33 +345,56 @@
       streak = streak ? Number(streak) : 0;
       let bestStreak = localStorage.getItem(LS_BEST_STREAK);
       bestStreak = bestStreak ? Number(bestStreak) : 0;
+      let soundEnabled = localStorage.getItem(LS_SOUND);
+      soundEnabled = soundEnabled === null ? true : soundEnabled !== 'false';
 
-      // ---------- Seeded PRNG (xorshift32) ----------
-      function createRng(seed) {
-        let s = seed >>> 0;
-        if (s === 0) s = 0x1234567;
-        return function () {
-          s ^= s << 13;
-          s ^= s >>> 17;
-          s ^= s << 5;
-          return (s >>> 0) / 0xFFFFFFFF;
-        };
-      }
-
-      function dailySeed() {
-        const now = new Date();
-        const str = now.toISOString().slice(0, 10); // YYYY-MM-DD
-        let h = 2166136261;
-        for (let i = 0; i < str.length; i++) {
-          h ^= str.charCodeAt(i);
-          h = Math.imul(h, 16777619);
+      // ---------- Web Audio ----------
+      let audioCtx = null;
+      function ensureAudio() {
+        if (!audioCtx) {
+          const Ctx = window.AudioContext || window.webkitAudioContext;
+          if (Ctx) audioCtx = new Ctx();
         }
-        return h >>> 0;
+        return !!audioCtx;
       }
+      function playTone(freq, type, duration, vol = 0.08, when = 0) {
+        if (!soundEnabled || !ensureAudio()) return;
+        const t = audioCtx.currentTime + when;
+        const osc = audioCtx.createOscillator();
+        const gain = audioCtx.createGain();
+        osc.type = type;
+        osc.frequency.setValueAtTime(freq, t);
+        gain.gain.setValueAtTime(vol, t);
+        gain.gain.exponentialRampToValueAtTime(0.001, t + duration);
+        osc.connect(gain);
+        gain.connect(audioCtx.destination);
+        osc.start(t);
+        osc.stop(t + duration);
+      }
+      function sfxPulse() { playTone(160, 'sine', 0.06, 0.1); playTone(320, 'sine', 0.06, 0.06, 0.04); }
+      function sfxEchoWall() { playTone(220, 'square', 0.05, 0.05); }
+      function sfxEchoHazard() { playTone(110, 'sawtooth', 0.08, 0.07); }
+      function sfxEchoTarget() { playTone(440, 'sine', 0.1, 0.09); playTone(660, 'sine', 0.1, 0.06, 0.05); }
+      function sfxHazardHit() { playTone(80, 'sawtooth', 0.25, 0.12); playTone(60, 'sawtooth', 0.25, 0.1, 0.1); }
+      function sfxWin() {
+        [262, 330, 392, 523].forEach((f, i) => playTone(f, 'sine', 0.15, 0.09, i * 0.08));
+      }
+      function sfxClick() { playTone(700, 'square', 0.03, 0.04); }
 
-      function randomSeed() {
-        return (Math.random() * 0xFFFFFFFF) >>> 0;
+      function setSound(on) {
+        soundEnabled = on;
+        localStorage.setItem(LS_SOUND, String(on));
+        btnSound.classList.toggle('on', on);
+        btnSound.classList.toggle('off', !on);
+        btnSound.textContent = on ? '&#128266;' : '&#128267;';
+        btnSound.title = on ? 'Mute sound' : 'Unmute sound';
+        if (on) ensureAudio();
       }
+      btnSound.addEventListener('click', () => setSound(!soundEnabled));
+      // Initialize sound icon state
+      btnSound.classList.toggle('on', soundEnabled);
+      btnSound.classList.toggle('off', !soundEnabled);
+      btnSound.textContent = soundEnabled ? '&#128266;' : '&#128267;';
 
       function renderHud() {
         dPulses.textContent = state.pulses;
@@ -332,20 +424,44 @@
         seedMode: 'daily', // 'daily' | 'practice'
         won: false,
         playing: true,
+        // Touch / pointer input
+        touchDir: null,   // 'up'|'down'|'left'|'right'|null
+        thrusting: false,
       };
 
+      // ---------- Keyboard ----------
       const keys = {};
       window.addEventListener('keydown', (e) => {
-        if (['ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight', ' ', 'w', 'a', 's', 'd', 'W', 'A', 'S', 'D'].includes(e.key)) {
+        const k = e.key;
+        if (['ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight', ' ', 'w', 'a', 's', 'd', 'W', 'A', 'S', 'D', 'r', 'R', 'p', 'P', 'm', 'M'].includes(k)) {
           e.preventDefault();
         }
-        keys[e.key] = true;
-        if (e.key === ' ' || e.key === 'Spacebar') triggerPulse();
+        keys[k] = true;
+        if ((k === ' ' || k === 'Spacebar' || k === 'p' || k === 'P') && !state.won) triggerPulse();
+        if (k === 'r' || k === 'R') { if (!state.won) initLevel(); sfxClick(); }
+        if (k === 'm' || k === 'M') { setSound(!soundEnabled); }
       });
       window.addEventListener('keyup', (e) => { keys[e.key] = false; });
 
-      modeDaily.addEventListener('click', () => setSeedMode('daily'));
-      modePractice.addEventListener('click', () => setSeedMode('practice'));
+      // ---------- Pointer / touch ----------
+      function setTouchDir(dir) { state.touchDir = dir; }
+      dpadButtons.forEach(btn => {
+        btn.addEventListener('pointerdown', (e) => { e.preventDefault(); setTouchDir(btn.dataset.dir); });
+        btn.addEventListener('pointerup', (e) => { e.preventDefault(); setTouchDir(null); });
+        btn.addEventListener('pointerleave', (e) => { e.preventDefault(); setTouchDir(null); });
+      });
+      btnTouchPulse.addEventListener('pointerdown', (e) => { e.preventDefault(); if (state.playing && !state.won) triggerPulse(); });
+      btnTouchPulse.addEventListener('click', (e) => { e.preventDefault(); });
+
+      // Canvas tap-to-pulse
+      canvas.addEventListener('pointerdown', (e) => {
+        if (!state.playing || state.won) return;
+        // Only treat as pulse if not dragging a dpad button
+        triggerPulse();
+      });
+
+      modeDaily.addEventListener('click', () => { setSeedMode('daily'); sfxClick(); });
+      modePractice.addEventListener('click', () => { setSeedMode('practice'); sfxClick(); });
 
       function setSeedMode(mode) {
         state.seedMode = mode;
@@ -354,9 +470,9 @@
         initLevel();
       }
 
-      btnPulse.addEventListener('click', () => { if (state.playing && !state.won) triggerPulse(); });
-      btnReplay.addEventListener('click', () => { if (!state.won) initLevel(state.seed); });
-      btnReset.addEventListener('click', () => { initLevel(); });
+      btnPulse.addEventListener('click', () => { if (state.playing && !state.won) { triggerPulse(); sfxClick(); } });
+      btnReplay.addEventListener('click', () => { if (!state.won) { initLevel(state.seed); sfxClick(); } });
+      btnReset.addEventListener('click', () => { initLevel(); sfxClick(); });
       btnNext.addEventListener('click', () => { winOverlay.classList.remove('show'); initLevel(); });
       btnClose.addEventListener('click', () => { winOverlay.classList.remove('show'); });
       btnCopy.addEventListener('click', copyScore);
@@ -426,6 +542,8 @@
         state.pulses = 0;
         state.won = false;
         state.playing = true;
+        state.touchDir = null;
+        state.thrusting = false;
         dStatus.textContent = 'Send a pulse to reveal walls, hazards & beacon';
         dStatus.className = 'stat status hint';
         winOverlay.classList.remove('show');
@@ -513,6 +631,7 @@
         if (state.pulse && state.pulse.active) return;
         state.pulses++;
         renderHud();
+        sfxPulse();
         state.pulse = {
           x: state.player.x, y: state.player.y,
           r: 0, maxR: Math.hypot(state.width, state.height) * 1.2,
@@ -521,6 +640,7 @@
       }
 
       function loseRun() {
+        sfxHazardHit();
         streak = 0;
         localStorage.setItem(LS_STREAK, '0');
         state.playing = false;
@@ -534,11 +654,26 @@
       function updatePlayer() {
         const p = state.player;
         if (!p) return;
+        // Keyboard steering
         if (keys['ArrowLeft'] || keys['a'] || keys['A']) p.angle -= p.turnRate;
         if (keys['ArrowRight'] || keys['d'] || keys['D']) p.angle += p.turnRate;
         if (keys['ArrowUp'] || keys['w'] || keys['W']) p.speed += p.accel;
         else if (keys['ArrowDown'] || keys['s'] || keys['S']) p.speed -= p.accel * 0.6;
-        p.speed *= p.friction;
+        // Touch steering: constant thrust in chosen direction
+        if (state.touchDir) {
+          const dirMap = { up: -Math.PI / 2, down: Math.PI / 2, left: Math.PI, right: 0 };
+          const targetAngle = dirMap[state.touchDir];
+          // Rotate toward target angle
+          let diff = targetAngle - p.angle;
+          while (diff > Math.PI) diff -= Math.PI * 2;
+          while (diff < -Math.PI) diff += Math.PI * 2;
+          p.angle += Math.sign(diff) * p.turnRate;
+          p.speed += p.accel;
+          state.thrusting = true;
+        } else {
+          state.thrusting = false;
+          p.speed *= p.friction;
+        }
         p.speed = clamp(p.speed, -p.maxSpeed, p.maxSpeed);
         p.x += Math.cos(p.angle) * p.speed;
         p.y += Math.sin(p.angle) * p.speed;
@@ -590,6 +725,7 @@
             const already = state.echoes.some(e => dist(e.x, e.y, hit.x, hit.y) < 12);
             if (!already) {
               state.echoes.push({ x: hit.x, y: hit.y, life: 1.0, born: performance.now() });
+              sfxEchoWall();
             }
             wl.revealed = true;
           }
@@ -600,6 +736,7 @@
             if (d <= pl.r + hz.r) {
               hz.revealed = true;
               state.echoes.push({ x: hz.x, y: hz.y, life: 1.2, born: performance.now(), hazard: true });
+              sfxEchoHazard();
             }
           }
         }
@@ -608,6 +745,7 @@
           if (d <= pl.r + state.target.r) {
             state.target.revealed = true;
             state.echoes.push({ x: state.target.x, y: state.target.y, life: 1.5, born: performance.now(), target: true });
+            sfxEchoTarget();
           }
         }
       }
@@ -615,6 +753,7 @@
       function win() {
         state.won = true;
         state.playing = false;
+        sfxWin();
         dStatus.textContent = 'Beacon found!';
         dStatus.className = 'stat status win';
         if (bestScore === null || state.pulses < bestScore) {
@@ -775,7 +914,7 @@
           ctx.strokeStyle = '#1e3a8a';
           ctx.lineWidth = 2;
           ctx.stroke();
-          if ((keys['ArrowUp'] || keys['w'] || keys['W']) && Math.abs(p.speed) > 0.05) {
+          if (state.thrusting || ((keys['ArrowUp'] || keys['w'] || keys['W']) && Math.abs(p.speed) > 0.05)) {
             ctx.beginPath();
             ctx.moveTo(-7, -4); ctx.lineTo(-13, 0); ctx.lineTo(-7, 4);
             ctx.fillStyle = 'rgba(59,130,246,0.5)';
