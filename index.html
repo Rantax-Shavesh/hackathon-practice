@@ -1,1 +1,438 @@
-﻿<!doctype html><html><head><meta charset='utf-8'><title>Hackathon Practice</title></head><body><h1>Hackathon Practice Live</h1></body></html>
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Interactive Kinematics &amp; Free-Body Lab &mdash; Milestone 1</title>
+  <style>
+    :root {
+      --bg: #0b1016;
+      --panel: #131a24;
+      --border: #25303c;
+      --text: #e8eaf2;
+      --muted: #94a3b8;
+      --accent: #3b82f6;
+      --accent-hover: #60a5fa;
+      --danger: #ef4444;
+    }
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    html, body { height: 100%; }
+    body {
+      background: var(--bg);
+      color: var(--text);
+      font-family: system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial, sans-serif;
+      line-height: 1.5;
+      -webkit-font-smoothing: antialiased;
+    }
+    header {
+      padding: 1.25rem 1.5rem;
+      border-bottom: 1px solid var(--border);
+      background: #0e151d;
+    }
+    header h1 { font-size: 1.15rem; letter-spacing: -0.01em; }
+    header p { color: var(--muted); font-size: 0.875rem; margin-top: 0.25rem; }
+    .lab {
+      display: flex;
+      flex-direction: column;
+      gap: 1.5rem;
+      padding: 1.5rem;
+      max-width: 1100px;
+      margin: 0 auto;
+    }
+    @media (min-width: 768px) {
+      .lab { flex-direction: row; align-items: flex-start; }
+      .sim { flex: 1 1 420px; }
+      .controls { width: 320px; flex-shrink: 0; }
+    }
+    .sim { position: relative; }
+    canvas {
+      width: 100%;
+      height: 360px;
+      background: #0f1724;
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      display: block;
+    }
+    .hud {
+      margin-top: 0.75rem;
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+      gap: 0.75rem;
+      font-size: 0.875rem;
+      color: var(--muted);
+    }
+    .hud .stat {
+      background: var(--panel);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 0.6rem 0.75rem;
+    }
+    .hud .stat b {
+      color: var(--text);
+      display: block;
+      font-size: 1.1rem;
+      font-variant-numeric: tabular-nums;
+    }
+    .controls {
+      background: var(--panel);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 1.25rem;
+      display: flex;
+      flex-direction: column;
+      gap: 1rem;
+    }
+    .controls h2 { font-size: 1rem; margin-bottom: 0.25rem; color: var(--text); }
+    .field { display: flex; flex-direction: column; gap: 0.5rem; }
+    .field label { font-size: 0.85rem; color: var(--muted); font-weight: 600; }
+    .field .row { display: flex; align-items: center; gap: 0.5rem; }
+    input[type=range] { flex: 1; accent-color: var(--accent); height: 6px; }
+    input[type=number] {
+      width: 70px;
+      background: #0b1016;
+      border: 1px solid var(--border);
+      color: var(--text);
+      border-radius: 6px;
+      padding: 0.35rem 0.5rem;
+    }
+    input[type=number]::-webkit-inner-spin-button,
+    input[type=number]::-webkit-outer-spin-button { opacity: 0.6; }
+    .presets { display: flex; gap: 0.5rem; }
+    .presets button {
+      flex: 1;
+      background: #0b1016;
+      border: 1px solid var(--border);
+      color: var(--text);
+      border-radius: 6px;
+      padding: 0.5rem 0.75rem;
+      font-size: 0.85rem;
+      cursor: pointer;
+    }
+    .presets button.active { border-color: var(--accent); color: var(--accent); }
+    .presets button:hover { border-color: var(--accent-hover); }
+    .actions { display: flex; gap: 0.5rem; margin-top: 0.25rem; }
+    .actions button {
+      flex: 1;
+      border-radius: 8px;
+      padding: 0.7rem;
+      font-weight: 600;
+      font-size: 0.95rem;
+      cursor: pointer;
+      border: none;
+    }
+    .launch { background: var(--accent); color: #fff; }
+    .launch:hover { background: var(--accent-hover); }
+    .launch:disabled { opacity: 0.5; cursor: not-allowed; }
+    .reset {
+      background: transparent;
+      border: 1px solid var(--border);
+      color: var(--text);
+    }
+    .reset:hover { border-color: var(--danger); color: var(--danger); }
+    .hint { margin-top: 0.5rem; font-size: 0.8rem; color: var(--muted); }
+  </style>
+</head>
+<body>
+  <header>
+    <h1>Interactive Kinematics &amp; Free-Body Lab</h1>
+    <p>Milestone 1 &mdash; Projectile Motion &bull; Dark mode &bull; Responsive</p>
+  </header>
+  <div class="lab">
+    <div class="sim">
+      <canvas id="simCanvas"></canvas>
+      <div class="hud">
+        <div class="stat"><b id="readTime">0.00 s</b><span>Time of flight</span></div>
+        <div class="stat"><b id="readHeight">0.00 m</b><span>Max height</span></div>
+        <div class="stat"><b id="readRange">0.00 m</b><span>Range</span></div>
+        <div class="stat"><b id="readGravity">9.81 m/s&sup2;</b><span>Gravity</span></div>
+      </div>
+    </div>
+    <div class="controls">
+      <h2>Launch Controls</h2>
+      <div class="field">
+        <label>Launch angle <span id="valAngle">45&deg;</span></label>
+        <div class="row">
+          <input type="range" id="angleRange" min="15" max="85" step="1" value="45">
+          <input type="number" id="angleNum" min="15" max="85" step="1" value="45">
+        </div>
+      </div>
+      <div class="field">
+        <label>Initial velocity <span id="valVel">40 m/s</span></label>
+        <div class="row">
+          <input type="range" id="velRange" min="10" max="100" step="1" value="40">
+          <input type="number" id="velNum" min="10" max="100" step="1" value="40">
+        </div>
+      </div>
+      <div class="field">
+        <label>Gravity preset</label>
+        <div class="presets">
+          <button type="button" class="preset active" data-g="9.81">Earth</button>
+          <button type="button" class="preset" data-g="1.62">Moon</button>
+          <button type="button" class="preset" data-g="3.72">Mars</button>
+        </div>
+      </div>
+      <div class="actions">
+        <button type="button" class="launch" id="btnLaunch">Launch</button>
+        <button type="button" class="reset" id="btnReset">Reset</button>
+      </div>
+      <div class="hint">Set angle &amp; velocity, pick a planet, then Launch.</div>
+    </div>
+  </div>
+  <script>
+    (function () {
+      'use strict';
+
+      const GRAVITY = { Earth: 9.81, Moon: 1.62, Mars: 3.72 };
+
+      const canvas = document.getElementById('simCanvas');
+      const ctx = canvas.getContext('2d');
+      const angleRange = document.getElementById('angleRange');
+      const angleNum = document.getElementById('angleNum');
+      const valAngle = document.getElementById('valAngle');
+      const velRange = document.getElementById('velRange');
+      const velNum = document.getElementById('velNum');
+      const valVel = document.getElementById('valVel');
+      const presetButtons = document.querySelectorAll('.preset');
+      const btnLaunch = document.getElementById('btnLaunch');
+      const btnReset = document.getElementById('btnReset');
+      const readTime = document.getElementById('readTime');
+      const readHeight = document.getElementById('readHeight');
+      const readRange = document.getElementById('readRange');
+      const readGravity = document.getElementById('readGravity');
+
+      let state = {
+        angle: 45,
+        velocity: 40,
+        gravity: 9.81,
+        running: false,
+        startTime: null,
+        duration: 5,
+        T: 0,
+        maxHeight: 0,
+        range: 0,
+        scale: 1,
+        origin: { x: 0, y: 0 },
+        groundY: 0,
+        path: [],
+        trail: [],
+        ball: null
+      };
+
+      function dpr() { return window.devicePixelRatio || 1; }
+
+      function resize() {
+        const d = dpr();
+        const w = canvas.clientWidth;
+        const h = canvas.clientHeight;
+        canvas.width = Math.max(1, w) * d;
+        canvas.height = Math.max(1, h) * d;
+        ctx.setTransform(d, 0, 0, d, 0, 0);
+        if (!state.running) recompute();
+        draw();
+      }
+      window.addEventListener('resize', resize);
+
+      function clamp(v, min, max) { return Math.min(Math.max(v, min), max); }
+
+      function bindRange(range, num, display, key, min, max, unit) {
+        valAngle.dataset.key = 'angle';
+        valVel.dataset.key = 'velocity';
+        function sync() {
+          let v = Number(range.value);
+          if (!Number.isFinite(v)) v = min;
+          v = clamp(v, min, max);
+          range.value = v;
+          num.value = v;
+          display.textContent = v + unit;
+          state[key] = v;
+          if (!state.running) recompute();
+        }
+        range.addEventListener('input', sync);
+        num.addEventListener('input', () => {
+          let v = Number(num.value);
+          if (!Number.isFinite(v)) v = min;
+          v = clamp(v, min, max);
+          range.value = v;
+          num.value = v;
+          display.textContent = v + unit;
+          state[key] = v;
+          if (!state.running) recompute();
+        });
+        sync();
+      }
+
+      bindRange(angleRange, angleNum, valAngle, 'angle', 15, 85, '&deg;');
+      bindRange(velRange, velNum, valVel, 'velocity', 10, 100, ' m/s');
+
+      presetButtons.forEach(btn => {
+        btn.addEventListener('click', () => {
+          presetButtons.forEach(b => b.classList.toggle('active', b === btn));
+          state.gravity = Number(btn.dataset.g);
+          readGravity.textContent = state.gravity.toFixed(2) + ' m/s&sup2;';
+          if (!state.running) recompute();
+        });
+      });
+
+      btnLaunch.addEventListener('click', () => {
+        if (state.running) return;
+        launch();
+      });
+      btnReset.addEventListener('click', () => {
+        state.running = false;
+        state.startTime = null;
+        state.trail = [];
+        state.ball = null;
+        draw();
+      });
+
+      function compute() {
+        const theta = state.angle * Math.PI / 180;
+        const v0 = state.velocity;
+        const g = state.gravity;
+        const vx = v0 * Math.cos(theta);
+        const vy0 = v0 * Math.sin(theta);
+        const T = vy0 > 0 ? 2 * vy0 / g : 0;
+        const maxHeight = (vy0 * vy0) / (2 * g);
+        const range = vx * T;
+        const steps = 500;
+        const path = [];
+        for (let i = 0; i <= steps; i++) {
+          const t = T * i / steps;
+          const x = vx * t;
+          const y = vy0 * t - 0.5 * g * t * t;
+          path.push({ x, y, t });
+        }
+        return { T, vx, vy0, maxHeight, range, path };
+      }
+
+      function fit(path) {
+        const w = canvas.clientWidth;
+        const h = canvas.clientHeight;
+        const pad = 40;
+        const groundY = h - pad;
+        let maxX = 0;
+        let maxY = 0;
+        for (const p of path) {
+          if (p.x > maxX) maxX = p.x;
+          if (p.y > maxY) maxY = p.y;
+        }
+        const scaleX = maxX > 0 ? (w - 2 * pad) / maxX : 1;
+        const scaleY = maxY > 0 ? (groundY - pad) / maxY : 1;
+        const scale = Math.min(scaleX, scaleY, 1);
+        return { scale, origin: { x: pad, y: groundY }, groundY };
+      }
+
+      function toCanvas(p, f) {
+        return { x: f.origin.x + p.x * f.scale, y: f.origin.y - p.y * f.scale, t: p.t };
+      }
+
+      function recompute() {
+        const sim = compute();
+        state.T = sim.T;
+        state.maxHeight = sim.maxHeight;
+        state.range = sim.range;
+        readTime.textContent = sim.T.toFixed(2) + ' s';
+        readHeight.textContent = sim.maxHeight.toFixed(2) + ' m';
+        readRange.textContent = sim.range.toFixed(2) + ' m';
+        const f = fit(sim.path);
+        state.scale = f.scale;
+        state.origin = f.origin;
+        state.groundY = f.groundY;
+        state.path = sim.path.map(p => toCanvas(p, f));
+        state.trail = [];
+        state.ball = state.path[0] || null;
+      }
+
+      function launch() {
+        recompute();
+        state.running = true;
+        state.startTime = performance.now();
+        state.trail = [];
+        state.ball = state.path[0] || null;
+        requestAnimationFrame(animate);
+      }
+
+      function animate(now) {
+        if (!state.running) return;
+        const elapsed = (now - state.startTime) / 1000;
+        let progress = elapsed / state.duration;
+        if (progress >= 1) {
+          progress = 1;
+          state.running = false;
+        }
+        const idx = Math.floor(progress * (state.path.length - 1));
+        state.trail = state.path.slice(0, idx + 1);
+        state.ball = state.path[idx];
+        draw();
+        if (state.running) requestAnimationFrame(animate);
+      }
+
+      function draw() {
+        const w = canvas.clientWidth;
+        const h = canvas.clientHeight;
+        ctx.clearRect(0, 0, w, h);
+
+        const groundY = state.groundY || h - 40;
+
+        // Ground line
+        ctx.beginPath();
+        ctx.moveTo(20, groundY);
+        ctx.lineTo(w - 20, groundY);
+        ctx.strokeStyle = '#334155';
+        ctx.lineWidth = 2;
+        ctx.stroke();
+
+        // Launch origin marker
+        const ox = state.origin.x || 40;
+        const oy = groundY;
+        ctx.beginPath();
+        ctx.arc(ox, oy, 5, 0, Math.PI * 2);
+        ctx.fillStyle = '#64748b';
+        ctx.fill();
+
+        // Full trajectory (faint trace)
+        if (state.path.length > 1) {
+          ctx.beginPath();
+          ctx.moveTo(state.path[0].x, state.path[0].y);
+          for (let i = 1; i < state.path.length; i++) {
+            ctx.lineTo(state.path[i].x, state.path[i].y);
+          }
+          ctx.strokeStyle = 'rgba(59, 130, 246, 0.25)';
+          ctx.lineWidth = 2;
+          ctx.setLineDash([6, 4]);
+          ctx.stroke();
+          ctx.setLineDash([]);
+        }
+
+        // Trail (smooth trace of the flight so far)
+        if (state.trail.length > 1) {
+          ctx.beginPath();
+          ctx.moveTo(state.trail[0].x, state.trail[0].y);
+          for (let i = 1; i < state.trail.length; i++) {
+            ctx.lineTo(state.trail[i].x, state.trail[i].y);
+          }
+          ctx.strokeStyle = '#3b82f6';
+          ctx.lineWidth = 3;
+          ctx.lineCap = 'round';
+          ctx.lineJoin = 'round';
+          ctx.stroke();
+        }
+
+        // Projectile ball
+        if (state.ball) {
+          ctx.beginPath();
+          ctx.arc(state.ball.x, state.ball.y, 7, 0, Math.PI * 2);
+          ctx.fillStyle = '#60a5fa';
+          ctx.fill();
+          ctx.strokeStyle = '#1e3a8a';
+          ctx.lineWidth = 2;
+          ctx.stroke();
+        }
+      }
+
+      resize();
+      draw();
+    })();
+  </script>
+</body>
+</html>
