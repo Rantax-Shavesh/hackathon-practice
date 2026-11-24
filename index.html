@@ -17,6 +17,8 @@
       --wall: #64748b;
       --echo: #f59e0b;
       --danger: #ef4444;
+      --par-under: #22c55e;
+      --par-over: #f43f5e;
     }
     * { box-sizing: border-box; margin: 0; padding: 0; }
     html, body { height: 100%; }
@@ -37,6 +39,22 @@
     }
     header h1 { font-size: 1.1rem; letter-spacing: -0.01em; }
     header p { color: var(--muted); font-size: 0.875rem; margin-top: 0.25rem; }
+    .seed-pill {
+      position: absolute;
+      top: 1rem; right: 1.25rem;
+      display: flex; align-items: center; gap: 0.5rem;
+      background: var(--panel);
+      border: 1px solid var(--border);
+      border-radius: 999px;
+      padding: 0.2rem 0.6rem;
+      font-size: 0.75rem;
+      color: var(--muted);
+      z-index: 12;
+    }
+    .seed-pill b { color: var(--text); }
+    .seed-pill .mode { cursor: pointer; padding: 0.1rem 0.5rem; border-radius: 6px; font-size: 0.7rem; font-weight: 600; }
+    .seed-pill .mode.active { background: var(--accent); color: #00222a; }
+    .seed-pill .mode:hover { background: #334155; }
     .app {
       display: flex;
       flex-direction: column;
@@ -119,36 +137,77 @@
       display: none; align-items: center; justify-content: center;
       flex-direction: column; gap: 1rem; z-index: 20;
       border-radius: 10px;
+      padding: 1.5rem;
+      text-align: center;
+      max-width: 420px;
+      left: 50%; top: 50%; transform: translate(-50%, -50%);
     }
     .overlay.show { display: flex; }
-    .overlay h2 { font-size: 1.5rem; color: var(--target); }
-    .overlay p { color: var(--muted); }
-    .overlay .actions { margin-top: 0.5rem; }
+    .overlay h2 { font-size: 1.5rem; color: var(--target); margin-bottom: 0.25rem; }
+    .overlay p { color: var(--muted); font-size: 0.9rem; margin: 0.25rem 0; }
+    .overlay .actions { margin-top: 0.5rem; width: 100%; }
+    .summary {
+      background: #0b1016;
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 0.85rem;
+      margin: 0.75rem 0;
+      font-size: 0.85rem;
+    }
+    .summary .row { display: flex; justify-content: space-between; gap: 0.5rem; margin: 0.35rem 0; }
+    .summary .row b { color: var(--text); }
+    .summary .row .val { color: var(--muted); text-align: right; }
+    .summary .par-under { color: var(--par-under); font-weight: 700; }
+    .summary .par-over { color: var(--par-over); font-weight: 700; }
+    .copy-wrap { display: flex; gap: 0.5rem; margin-top: 0.75rem; }
+    .copy-wrap input { flex: 1; background: #0b1016; border: 1px solid var(--border); color: var(--text); border-radius: 6px; padding: 0.45rem 0.6rem; font-size: 0.75rem; font-family: ui-monospace, SFMono-Regular, Menlo, monospace; }
+    .copy-wrap button { flex: 0 0 auto; border-radius: 6px; padding: 0.45rem 0.75rem; font-weight: 600; font-size: 0.8rem; cursor: pointer; border: none; background: var(--accent); color: #00222a; }
+    .copy-wrap button:hover { opacity: 0.9; }
     @media (max-width: 640px) {
       header { padding: 0.75rem 1rem; }
+      .seed-pill { top: 0.75rem; right: 1rem; font-size: 0.7rem; }
       .arena-wrap { padding: 0.5rem; }
       .controls { margin: 0.75rem auto 0; padding: 0.85rem; }
+      .overlay { padding: 1rem; width: 90%; }
     }
   </style>
 </head>
 <body>
   <header>
     <h1>Daily Sonar &amp; Dead-Reckoning Puzzle</h1>
-    <p>Milestone 1 &bull; Navigate by sonar &bull; Find the hidden beacon</p>
+    <p>Milestone 2 &bull; Navigate by sonar &bull; Find the hidden beacon</p>
+    <div class="seed-pill">
+      <span>Seed:</span>
+      <b id="dSeed">--</b>
+      <span class="mode active" id="modeDaily" data-mode="daily">Daily</span>
+      <span class="mode" id="modePractice" data-mode="practice">Practice</span>
+    </div>
   </header>
   <div class="app">
     <div class="arena-wrap">
       <canvas id="arena"></canvas>
       <div class="hud">
         <div class="stat"><b id="dPulses">0</b><span class="label">Pulses</span></div>
+        <div class="stat"><b id="dPar">--</b><span class="label">Par</span></div>
+        <div class="stat"><b id="dVsPar">--</b><span class="label">Vs Par</span></div>
         <div class="stat"><b id="dScore">--</b><span class="label">Best (pulses)</span></div>
         <div class="stat"><b id="dStreak">0</b><span class="label">Streak</span></div>
         <div class="stat status hint" id="dStatus">Send a pulse to reveal walls &amp; beacon</div>
       </div>
       <div class="overlay" id="winOverlay">
         <h2 id="winTitle">Beacon Found!</h2>
-        <p id="winMsg">Pulses used: <span id="winPulses">0</span></p>
-        <div class="actions">
+        <p id="winMsg">You located the target using sonar echoes.</p>
+        <div class="summary" id="winSummary">
+          <div class="row"><span>Pulses used</span><span class="val" id="sPulses">0</span></div>
+          <div class="row"><span>Par</span><span class="val" id="sPar">0</span></div>
+          <div class="row"><span>Vs par</span><span class="val" id="sVsPar">--</span></div>
+          <div class="row"><span>Streak</span><span class="val" id="sStreak">0</span></div>
+        </div>
+        <div class="copy-wrap">
+          <input id="sCopy" readonly>
+          <button id="btnCopy">Copy</button>
+        </div>
+        <div class="actions" style="width:100%">
           <button class="pulse" id="btnNext">Next Puzzle</button>
           <button class="reset" id="btnClose">Close</button>
         </div>
@@ -174,13 +233,24 @@
       const canvas = document.getElementById('arena');
       const ctx = canvas.getContext('2d');
       const dPulses = document.getElementById('dPulses');
+      const dPar = document.getElementById('dPar');
+      const dVsPar = document.getElementById('dVsPar');
       const dScore = document.getElementById('dScore');
       const dStreak = document.getElementById('dStreak');
       const dStatus = document.getElementById('dStatus');
+      const dSeed = document.getElementById('dSeed');
+      const modeDaily = document.getElementById('modeDaily');
+      const modePractice = document.getElementById('modePractice');
       const winOverlay = document.getElementById('winOverlay');
       const winTitle = document.getElementById('winTitle');
       const winMsg = document.getElementById('winMsg');
-      const winPulses = document.getElementById('winPulses');
+      const winSummary = document.getElementById('winSummary');
+      const sPulses = document.getElementById('sPulses');
+      const sPar = document.getElementById('sPar');
+      const sVsPar = document.getElementById('sVsPar');
+      const sStreak = document.getElementById('sStreak');
+      const sCopy = document.getElementById('sCopy');
+      const btnCopy = document.getElementById('btnCopy');
       const btnPulse = document.getElementById('btnPulse');
       const btnReset = document.getElementById('btnReset');
       const btnNext = document.getElementById('btnNext');
@@ -194,10 +264,44 @@
       let streak = localStorage.getItem(LS_STREAK);
       streak = streak ? Number(streak) : 0;
 
+      // ---------- Seeded PRNG (xorshift32) ----------
+      function createRng(seed) {
+        let s = seed >>> 0;
+        if (s === 0) s = 0x1234567;
+        return function () {
+          s ^= s << 13;
+          s ^= s >>> 17;
+          s ^= s << 5;
+          return (s >>> 0) / 0xFFFFFFFF;
+        };
+      }
+
+      function dailySeed() {
+        const now = new Date();
+        const str = now.toISOString().slice(0, 10); // YYYY-MM-DD
+        let h = 2166136261;
+        for (let i = 0; i < str.length; i++) {
+          h ^= str.charCodeAt(i);
+          h = Math.imul(h, 16777619);
+        }
+        return h >>> 0;
+      }
+
+      function randomSeed() {
+        return (Math.random() * 0xFFFFFFFF) >>> 0;
+      }
+
       function renderHud() {
         dPulses.textContent = state.pulses;
+        dPar.textContent = state.par;
+        const vs = state.pulses - state.par;
+        const vsText = vs < 0 ? (vs + ' under') : vs > 0 ? ('+' + vs + ' over') : 'par';
+        dVsPar.textContent = vsText;
+        dVsPar.className = 'stat';
+        dVsPar.classList.add(vs < 0 ? 'par-under' : (vs > 0 ? 'par-over' : ''));
         dScore.textContent = bestScore === null ? '--' : bestScore;
         dStreak.textContent = streak;
+        dSeed.textContent = state.seed;
       }
 
       const state = {
@@ -208,6 +312,9 @@
         echoes: [],     // {x,y, life, target?:bool}
         pulse: null,    // {x,y, r, active}
         pulses: 0,
+        par: 0,
+        seed: 0,
+        seedMode: 'daily', // 'daily' | 'practice'
         won: false,
         playing: true,
       };
@@ -222,10 +329,21 @@
       });
       window.addEventListener('keyup', (e) => { keys[e.key] = false; });
 
+      modeDaily.addEventListener('click', () => setSeedMode('daily'));
+      modePractice.addEventListener('click', () => setSeedMode('practice'));
+
+      function setSeedMode(mode) {
+        state.seedMode = mode;
+        modeDaily.classList.toggle('active', mode === 'daily');
+        modePractice.classList.toggle('active', mode === 'practice');
+        initLevel();
+      }
+
       btnPulse.addEventListener('click', () => { if (state.playing && !state.won) triggerPulse(); });
       btnReset.addEventListener('click', () => { initLevel(); });
       btnNext.addEventListener('click', () => { winOverlay.classList.remove('show'); initLevel(); });
       btnClose.addEventListener('click', () => { winOverlay.classList.remove('show'); });
+      btnCopy.addEventListener('click', copyScore);
 
       function resize() {
         const dpr = window.devicePixelRatio || 1;
@@ -248,8 +366,8 @@
       window.addEventListener('resize', resize);
 
       function clamp(v, min, max) { return Math.min(Math.max(v, min), max); }
-      function rand(min, max) { return Math.random() * (max - min) + min; }
       function dist(ax, ay, bx, by) { return Math.hypot(ax - bx, ay - by); }
+      function rand(min, max) { return min + state.rng() * (max - min); }
 
       function segPointDist(x1, y1, x2, y2, px, py) {
         const dx = x2 - x1, dy = y2 - y1;
@@ -295,6 +413,14 @@
         dStatus.className = 'stat status hint';
         winOverlay.classList.remove('show');
         renderHud();
+
+        // Seed + RNG
+        state.seed = state.seedMode === 'daily' ? dailySeed() : randomSeed();
+        state.rng = createRng(state.seed);
+        dSeed.textContent = state.seed;
+
+        // Par derived deterministically from seed (6..10 pulses)
+        state.par = 6 + Math.floor(state.rng() * 5);
 
         const wallCount = 10;
         const attempts = 500;
@@ -382,7 +508,7 @@
           if (hit) {
             const already = state.echoes.some(e => dist(e.x, e.y, hit.x, hit.y) < 12);
             if (!already) {
-              state.echoes.push({ x: hit.x, y: hit.y, life: 1.0 });
+              state.echoes.push({ x: hit.x, y: hit.y, life: 1.0, born: performance.now() });
             }
             wl.revealed = true;
           }
@@ -391,7 +517,7 @@
           const d = dist(pl.x, pl.y, state.target.x, state.target.y);
           if (d <= pl.r + state.target.r) {
             state.target.revealed = true;
-            state.echoes.push({ x: state.target.x, y: state.target.y, life: 1.5, target: true });
+            state.echoes.push({ x: state.target.x, y: state.target.y, life: 1.5, born: performance.now(), target: true });
           }
         }
       }
@@ -408,11 +534,35 @@
         streak++;
         localStorage.setItem(LS_STREAK, String(streak));
         renderHud();
-        winPulses.textContent = state.pulses;
+
+        const vs = state.pulses - state.par;
+        const vsText = vs < 0 ? (vs + ' under') : vs > 0 ? ('+' + vs + ' over') : 'par';
+        sPulses.textContent = state.pulses;
+        sPar.textContent = state.par;
+        sVsPar.textContent = vsText;
+        sVsPar.className = vs < 0 ? 'par-under' : (vs > 0 ? 'par-over' : '');
+        sStreak.textContent = streak;
+
+        const label = state.seedMode === 'daily' ? 'Daily' : 'Practice';
+        const scoreStr = `Sonar • ${label} seed ${state.seed} • ${state.pulses} pulses / par ${state.par} (${vsText}) • streak ${streak}`;
+        sCopy.value = scoreStr;
         winTitle.textContent = 'Beacon Found!';
         winMsg.textContent = 'You located the target using sonar echoes.';
         winOverlay.classList.add('show');
         draw();
+      }
+
+      function copyScore() {
+        sCopy.select();
+        try {
+          navigator.clipboard.writeText(sCopy.value).then(() => {
+            const old = btnCopy.textContent;
+            btnCopy.textContent = 'Copied!';
+            setTimeout(() => { btnCopy.textContent = old; }, 1200);
+          });
+        } catch (e) {
+          document.execCommand('copy');
+        }
       }
 
       function draw() {
@@ -438,13 +588,20 @@
           ctx.stroke();
         }
 
-        for (const e of state.echoes) {
-          const alpha = Math.max(0, e.life);
+        // Echoes with gradual decay: alpha + size shrink over life
+        const now = performance.now();
+        for (let i = state.echoes.length - 1; i >= 0; i--) {
+          const e = state.echoes[i];
+          const age = (now - e.born) / 1000;
+          const life = Math.max(0, e.life - age * 0.5);
+          if (life <= 0) { state.echoes.splice(i, 1); continue; }
+          const alpha = life;
+          const radius = 3 + life * 4;
           ctx.beginPath();
-          ctx.arc(e.x, e.y, 5 + (1 - alpha) * 4, 0, Math.PI * 2);
+          ctx.arc(e.x, e.y, radius, 0, Math.PI * 2);
           ctx.fillStyle = e.target ? 'rgba(34,197,94,' + alpha + ')' : 'rgba(245,158,11,' + alpha + ')';
           ctx.fill();
-          ctx.strokeStyle = e.target ? 'rgba(34,197,94,1)' : 'rgba(245,158,11,1)';
+          ctx.strokeStyle = e.target ? 'rgba(34,197,94,' + Math.min(1, alpha + 0.3) + ')' : 'rgba(245,158,11,' + Math.min(1, alpha + 0.3) + ')';
           ctx.lineWidth = 2;
           ctx.stroke();
         }
@@ -522,10 +679,6 @@
         if (state.playing && !state.won) {
           updatePlayer();
           updatePulse();
-        }
-        for (let i = state.echoes.length - 1; i >= 0; i--) {
-          state.echoes[i].life -= 0.035;
-          if (state.echoes[i].life <= 0) state.echoes.splice(i, 1);
         }
         draw();
         requestAnimationFrame(loop);
