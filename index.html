@@ -3,7 +3,7 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Interactive Kinematics &amp; Free-Body Lab &mdash; Milestone 1</title>
+  <title>Daily Sonar &amp; Dead-Reckoning Puzzle</title>
   <style>
     :root {
       --bg: #0b1016;
@@ -11,8 +11,11 @@
       --border: #25303c;
       --text: #e8eaf2;
       --muted: #94a3b8;
-      --accent: #3b82f6;
-      --accent-hover: #60a5fa;
+      --accent: #22d3ee;
+      --player: #3b82f6;
+      --target: #22c55e;
+      --wall: #64748b;
+      --echo: #f59e0b;
       --danger: #ef4444;
     }
     * { box-sizing: border-box; margin: 0; padding: 0; }
@@ -23,415 +26,514 @@
       font-family: system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial, sans-serif;
       line-height: 1.5;
       -webkit-font-smoothing: antialiased;
+      overflow: hidden;
     }
     header {
-      padding: 1.25rem 1.5rem;
+      padding: 1rem 1.25rem;
       border-bottom: 1px solid var(--border);
       background: #0e151d;
+      position: relative;
+      z-index: 10;
     }
-    header h1 { font-size: 1.15rem; letter-spacing: -0.01em; }
+    header h1 { font-size: 1.1rem; letter-spacing: -0.01em; }
     header p { color: var(--muted); font-size: 0.875rem; margin-top: 0.25rem; }
-    .lab {
+    .app {
       display: flex;
       flex-direction: column;
-      gap: 1.5rem;
-      padding: 1.5rem;
-      max-width: 1100px;
+      height: 100vh;
+      max-width: 1000px;
       margin: 0 auto;
     }
-    @media (min-width: 768px) {
-      .lab { flex-direction: row; align-items: flex-start; }
-      .sim { flex: 1 1 420px; }
-      .controls { width: 320px; flex-shrink: 0; }
+    .arena-wrap {
+      flex: 1;
+      position: relative;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 1rem;
+      overflow: auto;
     }
-    .sim { position: relative; }
     canvas {
-      width: 100%;
-      height: 360px;
       background: #0f1724;
       border: 1px solid var(--border);
       border-radius: 10px;
       display: block;
+      max-width: 100%;
+      max-height: calc(100vh - 160px);
     }
     .hud {
-      margin-top: 0.75rem;
+      position: absolute;
+      top: 1rem;
+      left: 1rem;
+      right: 1rem;
       display: grid;
-      grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+      grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
       gap: 0.75rem;
-      font-size: 0.875rem;
-      color: var(--muted);
+      pointer-events: none;
+      z-index: 5;
     }
-    .hud .stat {
+    .stat {
       background: var(--panel);
       border: 1px solid var(--border);
       border-radius: 8px;
       padding: 0.6rem 0.75rem;
+      pointer-events: auto;
     }
-    .hud .stat b {
-      color: var(--text);
-      display: block;
-      font-size: 1.1rem;
-      font-variant-numeric: tabular-nums;
-    }
+    .stat b { color: var(--text); display: block; font-size: 1.15rem; font-variant-numeric: tabular-nums; }
+    .stat .label { color: var(--muted); font-size: 0.75rem; text-transform: uppercase; letter-spacing: 0.05em; }
+    .status { grid-column: 1 / -1; text-align: center; font-weight: 600; font-size: 0.95rem; }
+    .status.win { color: var(--target); }
+    .status.hint { color: var(--muted); }
     .controls {
       background: var(--panel);
       border: 1px solid var(--border);
-      border-radius: 12px;
-      padding: 1.25rem;
+      border-radius: 10px;
+      padding: 1rem;
+      margin: 1rem auto 0;
+      max-width: 560px;
       display: flex;
       flex-direction: column;
-      gap: 1rem;
+      gap: 0.75rem;
     }
-    .controls h2 { font-size: 1rem; margin-bottom: 0.25rem; color: var(--text); }
-    .field { display: flex; flex-direction: column; gap: 0.5rem; }
-    .field label { font-size: 0.85rem; color: var(--muted); font-weight: 600; }
-    .field .row { display: flex; align-items: center; gap: 0.5rem; }
-    input[type=range] { flex: 1; accent-color: var(--accent); height: 6px; }
-    input[type=number] {
-      width: 70px;
+    .controls h2 { font-size: 0.9rem; color: var(--text); margin-bottom: 0.25rem; }
+    .keys { display: flex; gap: 0.5rem; flex-wrap: wrap; }
+    .key {
       background: #0b1016;
       border: 1px solid var(--border);
       color: var(--text);
       border-radius: 6px;
-      padding: 0.35rem 0.5rem;
-    }
-    input[type=number]::-webkit-inner-spin-button,
-    input[type=number]::-webkit-outer-spin-button { opacity: 0.6; }
-    .presets { display: flex; gap: 0.5rem; }
-    .presets button {
-      flex: 1;
-      background: #0b1016;
-      border: 1px solid var(--border);
-      color: var(--text);
-      border-radius: 6px;
-      padding: 0.5rem 0.75rem;
-      font-size: 0.85rem;
-      cursor: pointer;
-    }
-    .presets button.active { border-color: var(--accent); color: var(--accent); }
-    .presets button:hover { border-color: var(--accent-hover); }
-    .actions { display: flex; gap: 0.5rem; margin-top: 0.25rem; }
-    .actions button {
-      flex: 1;
-      border-radius: 8px;
-      padding: 0.7rem;
+      padding: 0.35rem 0.6rem;
+      font-size: 0.8rem;
       font-weight: 600;
-      font-size: 0.95rem;
-      cursor: pointer;
-      border: none;
     }
-    .launch { background: var(--accent); color: #fff; }
-    .launch:hover { background: var(--accent-hover); }
-    .launch:disabled { opacity: 0.5; cursor: not-allowed; }
-    .reset {
-      background: transparent;
-      border: 1px solid var(--border);
-      color: var(--text);
-    }
+    .actions { display: flex; gap: 0.5rem; }
+    .actions button { flex: 1; border-radius: 8px; padding: 0.65rem; font-weight: 600; font-size: 0.95rem; cursor: pointer; border: none; }
+    .pulse { background: var(--accent); color: #00222a; }
+    .pulse:hover { opacity: 0.9; }
+    .pulse:disabled { opacity: 0.5; cursor: not-allowed; }
+    .reset { background: transparent; border: 1px solid var(--border); color: var(--text); }
     .reset:hover { border-color: var(--danger); color: var(--danger); }
-    .hint { margin-top: 0.5rem; font-size: 0.8rem; color: var(--muted); }
+    .hint { margin-top: 0.25rem; font-size: 0.78rem; color: var(--muted); text-align: center; }
+    .overlay {
+      position: absolute; inset: 0; background: rgba(11,16,22,0.85);
+      display: none; align-items: center; justify-content: center;
+      flex-direction: column; gap: 1rem; z-index: 20;
+      border-radius: 10px;
+    }
+    .overlay.show { display: flex; }
+    .overlay h2 { font-size: 1.5rem; color: var(--target); }
+    .overlay p { color: var(--muted); }
+    .overlay .actions { margin-top: 0.5rem; }
+    @media (max-width: 640px) {
+      header { padding: 0.75rem 1rem; }
+      .arena-wrap { padding: 0.5rem; }
+      .controls { margin: 0.75rem auto 0; padding: 0.85rem; }
+    }
   </style>
 </head>
 <body>
   <header>
-    <h1>Interactive Kinematics &amp; Free-Body Lab</h1>
-    <p>Milestone 1 &mdash; Projectile Motion &bull; Dark mode &bull; Responsive</p>
+    <h1>Daily Sonar &amp; Dead-Reckoning Puzzle</h1>
+    <p>Milestone 1 &bull; Navigate by sonar &bull; Find the hidden beacon</p>
   </header>
-  <div class="lab">
-    <div class="sim">
-      <canvas id="simCanvas"></canvas>
+  <div class="app">
+    <div class="arena-wrap">
+      <canvas id="arena"></canvas>
       <div class="hud">
-        <div class="stat"><b id="readTime">0.00 s</b><span>Time of flight</span></div>
-        <div class="stat"><b id="readHeight">0.00 m</b><span>Max height</span></div>
-        <div class="stat"><b id="readRange">0.00 m</b><span>Range</span></div>
-        <div class="stat"><b id="readGravity">9.81 m/s&sup2;</b><span>Gravity</span></div>
+        <div class="stat"><b id="dPulses">0</b><span class="label">Pulses</span></div>
+        <div class="stat"><b id="dScore">--</b><span class="label">Best (pulses)</span></div>
+        <div class="stat"><b id="dStreak">0</b><span class="label">Streak</span></div>
+        <div class="stat status hint" id="dStatus">Send a pulse to reveal walls &amp; beacon</div>
+      </div>
+      <div class="overlay" id="winOverlay">
+        <h2 id="winTitle">Beacon Found!</h2>
+        <p id="winMsg">Pulses used: <span id="winPulses">0</span></p>
+        <div class="actions">
+          <button class="pulse" id="btnNext">Next Puzzle</button>
+          <button class="reset" id="btnClose">Close</button>
+        </div>
       </div>
     </div>
     <div class="controls">
-      <h2>Launch Controls</h2>
-      <div class="field">
-        <label>Launch angle <span id="valAngle">45&deg;</span></label>
-        <div class="row">
-          <input type="range" id="angleRange" min="15" max="85" step="1" value="45">
-          <input type="number" id="angleNum" min="15" max="85" step="1" value="45">
-        </div>
-      </div>
-      <div class="field">
-        <label>Initial velocity <span id="valVel">40 m/s</span></label>
-        <div class="row">
-          <input type="range" id="velRange" min="10" max="100" step="1" value="40">
-          <input type="number" id="velNum" min="10" max="100" step="1" value="40">
-        </div>
-      </div>
-      <div class="field">
-        <label>Gravity preset</label>
-        <div class="presets">
-          <button type="button" class="preset active" data-g="9.81">Earth</button>
-          <button type="button" class="preset" data-g="1.62">Moon</button>
-          <button type="button" class="preset" data-g="3.72">Mars</button>
-        </div>
+      <h2>Controls</h2>
+      <div class="keys">
+        <span class="key">&#8593;/W</span><span class="key">&#8595;/S</span><span class="key">&#8592;/A</span><span class="key">&#8594;/D</span>
+        <span class="key">Space</span><span class="key">Click</span>
       </div>
       <div class="actions">
-        <button type="button" class="launch" id="btnLaunch">Launch</button>
-        <button type="button" class="reset" id="btnReset">Reset</button>
+        <button class="pulse" id="btnPulse">Send Sonar Pulse</button>
+        <button class="reset" id="btnReset">Reset Puzzle</button>
       </div>
-      <div class="hint">Set angle &amp; velocity, pick a planet, then Launch.</div>
+      <div class="hint">Thrust to move, rotate to steer. Pulse reveals walls (echoes) and the hidden beacon. Reach the beacon to win.</div>
     </div>
   </div>
   <script>
     (function () {
       'use strict';
 
-      const GRAVITY = { Earth: 9.81, Moon: 1.62, Mars: 3.72 };
-
-      const canvas = document.getElementById('simCanvas');
+      const canvas = document.getElementById('arena');
       const ctx = canvas.getContext('2d');
-      const angleRange = document.getElementById('angleRange');
-      const angleNum = document.getElementById('angleNum');
-      const valAngle = document.getElementById('valAngle');
-      const velRange = document.getElementById('velRange');
-      const velNum = document.getElementById('velNum');
-      const valVel = document.getElementById('valVel');
-      const presetButtons = document.querySelectorAll('.preset');
-      const btnLaunch = document.getElementById('btnLaunch');
+      const dPulses = document.getElementById('dPulses');
+      const dScore = document.getElementById('dScore');
+      const dStreak = document.getElementById('dStreak');
+      const dStatus = document.getElementById('dStatus');
+      const winOverlay = document.getElementById('winOverlay');
+      const winTitle = document.getElementById('winTitle');
+      const winMsg = document.getElementById('winMsg');
+      const winPulses = document.getElementById('winPulses');
+      const btnPulse = document.getElementById('btnPulse');
       const btnReset = document.getElementById('btnReset');
-      const readTime = document.getElementById('readTime');
-      const readHeight = document.getElementById('readHeight');
-      const readRange = document.getElementById('readRange');
-      const readGravity = document.getElementById('readGravity');
+      const btnNext = document.getElementById('btnNext');
+      const btnClose = document.getElementById('btnClose');
 
-      let state = {
-        angle: 45,
-        velocity: 40,
-        gravity: 9.81,
-        running: false,
-        startTime: null,
-        duration: 5,
-        T: 0,
-        maxHeight: 0,
-        range: 0,
-        scale: 1,
-        origin: { x: 0, y: 0 },
-        groundY: 0,
-        path: [],
-        trail: [],
-        ball: null
+      const LS_SCORE = 'sonar_best_score';
+      const LS_STREAK = 'sonar_streak';
+
+      let bestScore = localStorage.getItem(LS_SCORE);
+      bestScore = bestScore ? Number(bestScore) : null;
+      let streak = localStorage.getItem(LS_STREAK);
+      streak = streak ? Number(streak) : 0;
+
+      function renderHud() {
+        dPulses.textContent = state.pulses;
+        dScore.textContent = bestScore === null ? '--' : bestScore;
+        dStreak.textContent = streak;
+      }
+
+      const state = {
+        width: 0, height: 0,
+        player: null,
+        walls: [],      // {x1,y1,x2,y2, revealed:false}
+        target: null,   // {x,y,r, revealed:false}
+        echoes: [],     // {x,y, life, target?:bool}
+        pulse: null,    // {x,y, r, active}
+        pulses: 0,
+        won: false,
+        playing: true,
       };
 
-      function dpr() { return window.devicePixelRatio || 1; }
+      const keys = {};
+      window.addEventListener('keydown', (e) => {
+        if (['ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight', ' ', 'w', 'a', 's', 'd', 'W', 'A', 'S', 'D'].includes(e.key)) {
+          e.preventDefault();
+        }
+        keys[e.key] = true;
+        if (e.key === ' ' || e.key === 'Spacebar') triggerPulse();
+      });
+      window.addEventListener('keyup', (e) => { keys[e.key] = false; });
+
+      btnPulse.addEventListener('click', () => { if (state.playing && !state.won) triggerPulse(); });
+      btnReset.addEventListener('click', () => { initLevel(); });
+      btnNext.addEventListener('click', () => { winOverlay.classList.remove('show'); initLevel(); });
+      btnClose.addEventListener('click', () => { winOverlay.classList.remove('show'); });
 
       function resize() {
-        const d = dpr();
-        const w = canvas.clientWidth;
-        const h = canvas.clientHeight;
-        canvas.width = Math.max(1, w) * d;
-        canvas.height = Math.max(1, h) * d;
-        ctx.setTransform(d, 0, 0, d, 0, 0);
-        if (!state.running) recompute();
+        const dpr = window.devicePixelRatio || 1;
+        const wrap = canvas.parentElement;
+        const w = Math.max(1, wrap.clientWidth);
+        const h = Math.max(1, wrap.clientHeight);
+        canvas.width = w * dpr;
+        canvas.height = h * dpr;
+        canvas.style.width = w + 'px';
+        canvas.style.height = h + 'px';
+        ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+        state.width = w;
+        state.height = h;
+        if (state.player) {
+          state.player.x = clamp(state.player.x, 40, w - 40);
+          state.player.y = clamp(state.player.y, 40, h - 40);
+        }
         draw();
       }
       window.addEventListener('resize', resize);
 
       function clamp(v, min, max) { return Math.min(Math.max(v, min), max); }
+      function rand(min, max) { return Math.random() * (max - min) + min; }
+      function dist(ax, ay, bx, by) { return Math.hypot(ax - bx, ay - by); }
 
-      function bindRange(range, num, display, key, min, max, unit) {
-        valAngle.dataset.key = 'angle';
-        valVel.dataset.key = 'velocity';
-        function sync() {
-          let v = Number(range.value);
-          if (!Number.isFinite(v)) v = min;
-          v = clamp(v, min, max);
-          range.value = v;
-          num.value = v;
-          display.textContent = v + unit;
-          state[key] = v;
-          if (!state.running) recompute();
-        }
-        range.addEventListener('input', sync);
-        num.addEventListener('input', () => {
-          let v = Number(num.value);
-          if (!Number.isFinite(v)) v = min;
-          v = clamp(v, min, max);
-          range.value = v;
-          num.value = v;
-          display.textContent = v + unit;
-          state[key] = v;
-          if (!state.running) recompute();
-        });
-        sync();
+      function segPointDist(x1, y1, x2, y2, px, py) {
+        const dx = x2 - x1, dy = y2 - y1;
+        const len2 = dx * dx + dy * dy;
+        if (len2 === 0) return dist(px, py, x1, y1);
+        let t = ((px - x1) * dx + (py - y1) * dy) / len2;
+        t = clamp(t, 0, 1);
+        const cx = x1 + t * dx;
+        const cy = y1 + t * dy;
+        return dist(px, py, cx, cy);
       }
 
-      bindRange(angleRange, angleNum, valAngle, 'angle', 15, 85, '&deg;');
-      bindRange(velRange, velNum, valVel, 'velocity', 10, 100, ' m/s');
+      function circleSegIntersect(cx, cy, r, x1, y1, x2, y2) {
+        const dx = x2 - x1, dy = y2 - y1;
+        const len2 = dx * dx + dy * dy;
+        let t = 0;
+        if (len2 !== 0) {
+          t = ((cx - x1) * dx + (cy - y1) * dy) / len2;
+          t = clamp(t, 0, 1);
+        }
+        const px = x1 + t * dx;
+        const py = y1 + t * dy;
+        const d = dist(cx, cy, px, py);
+        if (d <= r) return { x: px, y: py, d };
+        return null;
+      }
 
-      presetButtons.forEach(btn => {
-        btn.addEventListener('click', () => {
-          presetButtons.forEach(b => b.classList.toggle('active', b === btn));
-          state.gravity = Number(btn.dataset.g);
-          readGravity.textContent = state.gravity.toFixed(2) + ' m/s&sup2;';
-          if (!state.running) recompute();
-        });
-      });
+      function initLevel() {
+        const w = state.width, h = state.height;
+        state.player = {
+          x: w * 0.25, y: h * 0.5,
+          angle: 0, speed: 0,
+          maxSpeed: 2.6, accel: 0.14, friction: 0.92, turnRate: 0.05,
+          radius: 7,
+        };
+        state.walls = [];
+        state.echoes = [];
+        state.pulse = null;
+        state.pulses = 0;
+        state.won = false;
+        state.playing = true;
+        dStatus.textContent = 'Send a pulse to reveal walls & beacon';
+        dStatus.className = 'stat status hint';
+        winOverlay.classList.remove('show');
+        renderHud();
 
-      btnLaunch.addEventListener('click', () => {
-        if (state.running) return;
-        launch();
-      });
-      btnReset.addEventListener('click', () => {
-        state.running = false;
-        state.startTime = null;
-        state.trail = [];
-        state.ball = null;
+        const wallCount = 10;
+        const attempts = 500;
+        for (let i = 0; i < wallCount; i++) {
+          let placed = false;
+          for (let a = 0; a < attempts && !placed; a++) {
+            const x1 = rand(60, w - 60);
+            const y1 = rand(60, h - 60);
+            const len = rand(60, 160);
+            const ang = rand(0, Math.PI * 2);
+            const x2 = x1 + Math.cos(ang) * len;
+            const y2 = y1 + Math.sin(ang) * len;
+            const wall = { x1, y1, x2, y2, revealed: false };
+            if (dist(x1, y1, state.player.x, state.player.y) < 90 && dist(x2, y2, state.player.x, state.player.y) < 90) continue;
+            state.walls.push(wall);
+            placed = true;
+          }
+        }
+
+        let targetPlaced = false;
+        for (let a = 0; a < attempts && !targetPlaced; a++) {
+          const tx = rand(120, w - 120);
+          const ty = rand(120, h - 120);
+          const tr = 14;
+          if (dist(tx, ty, state.player.x, state.player.y) < 160) continue;
+          let hitWall = false;
+          for (const wl of state.walls) {
+            if (segPointDist(wl.x1, wl.y1, wl.x2, wl.y2, tx, ty) < tr + 8) { hitWall = true; break; }
+          }
+          if (hitWall) continue;
+          state.target = { x: tx, y: ty, r: tr, revealed: false };
+          targetPlaced = true;
+        }
+        if (!state.target) {
+          state.target = { x: w * 0.8, y: h * 0.8, r: 14, revealed: false };
+        }
+
         draw();
-      });
+      }
 
-      function compute() {
-        const theta = state.angle * Math.PI / 180;
-        const v0 = state.velocity;
-        const g = state.gravity;
-        const vx = v0 * Math.cos(theta);
-        const vy0 = v0 * Math.sin(theta);
-        const T = vy0 > 0 ? 2 * vy0 / g : 0;
-        const maxHeight = (vy0 * vy0) / (2 * g);
-        const range = vx * T;
-        const steps = 500;
-        const path = [];
-        for (let i = 0; i <= steps; i++) {
-          const t = T * i / steps;
-          const x = vx * t;
-          const y = vy0 * t - 0.5 * g * t * t;
-          path.push({ x, y, t });
+      function triggerPulse() {
+        if (!state.playing || state.won) return;
+        if (state.pulse && state.pulse.active) return;
+        state.pulses++;
+        renderHud();
+        state.pulse = {
+          x: state.player.x, y: state.player.y,
+          r: 0, maxR: Math.hypot(state.width, state.height) * 1.2,
+          active: true, speed: 5.5,
+        };
+      }
+
+      function updatePlayer() {
+        const p = state.player;
+        if (!p) return;
+        if (keys['ArrowLeft'] || keys['a'] || keys['A']) p.angle -= p.turnRate;
+        if (keys['ArrowRight'] || keys['d'] || keys['D']) p.angle += p.turnRate;
+        if (keys['ArrowUp'] || keys['w'] || keys['W']) p.speed += p.accel;
+        else if (keys['ArrowDown'] || keys['s'] || keys['S']) p.speed -= p.accel * 0.6;
+        p.speed *= p.friction;
+        p.speed = clamp(p.speed, -p.maxSpeed, p.maxSpeed);
+        p.x += Math.cos(p.angle) * p.speed;
+        p.y += Math.sin(p.angle) * p.speed;
+        p.x = clamp(p.x, p.radius, state.width - p.radius);
+        p.y = clamp(p.y, p.radius, state.height - p.radius);
+
+        if (state.target && state.target.revealed && !state.won) {
+          if (dist(p.x, p.y, state.target.x, state.target.y) < p.radius + state.target.r + 4) {
+            win();
+          }
         }
-        return { T, vx, vy0, maxHeight, range, path };
       }
 
-      function fit(path) {
-        const w = canvas.clientWidth;
-        const h = canvas.clientHeight;
-        const pad = 40;
-        const groundY = h - pad;
-        let maxX = 0;
-        let maxY = 0;
-        for (const p of path) {
-          if (p.x > maxX) maxX = p.x;
-          if (p.y > maxY) maxY = p.y;
+      function updatePulse() {
+        const pl = state.pulse;
+        if (!pl || !pl.active) return;
+        pl.r += pl.speed;
+        if (pl.r >= pl.maxR) {
+          pl.active = false;
+          state.pulse = null;
+          return;
         }
-        const scaleX = maxX > 0 ? (w - 2 * pad) / maxX : 1;
-        const scaleY = maxY > 0 ? (groundY - pad) / maxY : 1;
-        const scale = Math.min(scaleX, scaleY, 1);
-        return { scale, origin: { x: pad, y: groundY }, groundY };
-      }
-
-      function toCanvas(p, f) {
-        return { x: f.origin.x + p.x * f.scale, y: f.origin.y - p.y * f.scale, t: p.t };
-      }
-
-      function recompute() {
-        const sim = compute();
-        state.T = sim.T;
-        state.maxHeight = sim.maxHeight;
-        state.range = sim.range;
-        readTime.textContent = sim.T.toFixed(2) + ' s';
-        readHeight.textContent = sim.maxHeight.toFixed(2) + ' m';
-        readRange.textContent = sim.range.toFixed(2) + ' m';
-        const f = fit(sim.path);
-        state.scale = f.scale;
-        state.origin = f.origin;
-        state.groundY = f.groundY;
-        state.path = sim.path.map(p => toCanvas(p, f));
-        state.trail = [];
-        state.ball = state.path[0] || null;
-      }
-
-      function launch() {
-        recompute();
-        state.running = true;
-        state.startTime = performance.now();
-        state.trail = [];
-        state.ball = state.path[0] || null;
-        requestAnimationFrame(animate);
-      }
-
-      function animate(now) {
-        if (!state.running) return;
-        const elapsed = (now - state.startTime) / 1000;
-        let progress = elapsed / state.duration;
-        if (progress >= 1) {
-          progress = 1;
-          state.running = false;
+        for (const wl of state.walls) {
+          const hit = circleSegIntersect(pl.x, pl.y, pl.r, wl.x1, wl.y1, wl.x2, wl.y2);
+          if (hit) {
+            const already = state.echoes.some(e => dist(e.x, e.y, hit.x, hit.y) < 12);
+            if (!already) {
+              state.echoes.push({ x: hit.x, y: hit.y, life: 1.0 });
+            }
+            wl.revealed = true;
+          }
         }
-        const idx = Math.floor(progress * (state.path.length - 1));
-        state.trail = state.path.slice(0, idx + 1);
-        state.ball = state.path[idx];
+        if (state.target && !state.target.revealed) {
+          const d = dist(pl.x, pl.y, state.target.x, state.target.y);
+          if (d <= pl.r + state.target.r) {
+            state.target.revealed = true;
+            state.echoes.push({ x: state.target.x, y: state.target.y, life: 1.5, target: true });
+          }
+        }
+      }
+
+      function win() {
+        state.won = true;
+        state.playing = false;
+        dStatus.textContent = 'Beacon found!';
+        dStatus.className = 'stat status win';
+        if (bestScore === null || state.pulses < bestScore) {
+          bestScore = state.pulses;
+          localStorage.setItem(LS_SCORE, String(bestScore));
+        }
+        streak++;
+        localStorage.setItem(LS_STREAK, String(streak));
+        renderHud();
+        winPulses.textContent = state.pulses;
+        winTitle.textContent = 'Beacon Found!';
+        winMsg.textContent = 'You located the target using sonar echoes.';
+        winOverlay.classList.add('show');
         draw();
-        if (state.running) requestAnimationFrame(animate);
       }
 
       function draw() {
-        const w = canvas.clientWidth;
-        const h = canvas.clientHeight;
+        const w = state.width, h = state.height;
         ctx.clearRect(0, 0, w, h);
 
-        const groundY = state.groundY || h - 40;
-
-        // Ground line
+        ctx.strokeStyle = '#1c2736';
+        ctx.lineWidth = 1;
+        const gs = 40;
         ctx.beginPath();
-        ctx.moveTo(20, groundY);
-        ctx.lineTo(w - 20, groundY);
-        ctx.strokeStyle = '#334155';
-        ctx.lineWidth = 2;
+        for (let x = 0; x <= w; x += gs) { ctx.moveTo(x, 0); ctx.lineTo(x, h); }
+        for (let y = 0; y <= h; y += gs) { ctx.moveTo(0, y); ctx.lineTo(w, y); }
         ctx.stroke();
 
-        // Launch origin marker
-        const ox = state.origin.x || 40;
-        const oy = groundY;
-        ctx.beginPath();
-        ctx.arc(ox, oy, 5, 0, Math.PI * 2);
-        ctx.fillStyle = '#64748b';
-        ctx.fill();
-
-        // Full trajectory (faint trace)
-        if (state.path.length > 1) {
+        for (const wl of state.walls) {
+          if (!wl.revealed) continue;
           ctx.beginPath();
-          ctx.moveTo(state.path[0].x, state.path[0].y);
-          for (let i = 1; i < state.path.length; i++) {
-            ctx.lineTo(state.path[i].x, state.path[i].y);
-          }
-          ctx.strokeStyle = 'rgba(59, 130, 246, 0.25)';
-          ctx.lineWidth = 2;
-          ctx.setLineDash([6, 4]);
-          ctx.stroke();
-          ctx.setLineDash([]);
-        }
-
-        // Trail (smooth trace of the flight so far)
-        if (state.trail.length > 1) {
-          ctx.beginPath();
-          ctx.moveTo(state.trail[0].x, state.trail[0].y);
-          for (let i = 1; i < state.trail.length; i++) {
-            ctx.lineTo(state.trail[i].x, state.trail[i].y);
-          }
-          ctx.strokeStyle = '#3b82f6';
+          ctx.moveTo(wl.x1, wl.y1);
+          ctx.lineTo(wl.x2, wl.y2);
+          ctx.strokeStyle = 'rgba(100,116,139,0.55)';
           ctx.lineWidth = 3;
           ctx.lineCap = 'round';
-          ctx.lineJoin = 'round';
           ctx.stroke();
         }
 
-        // Projectile ball
-        if (state.ball) {
+        for (const e of state.echoes) {
+          const alpha = Math.max(0, e.life);
           ctx.beginPath();
-          ctx.arc(state.ball.x, state.ball.y, 7, 0, Math.PI * 2);
-          ctx.fillStyle = '#60a5fa';
+          ctx.arc(e.x, e.y, 5 + (1 - alpha) * 4, 0, Math.PI * 2);
+          ctx.fillStyle = e.target ? 'rgba(34,197,94,' + alpha + ')' : 'rgba(245,158,11,' + alpha + ')';
+          ctx.fill();
+          ctx.strokeStyle = e.target ? 'rgba(34,197,94,1)' : 'rgba(245,158,11,1)';
+          ctx.lineWidth = 2;
+          ctx.stroke();
+        }
+
+        if (state.target && state.target.revealed) {
+          const t = state.target;
+          ctx.beginPath();
+          ctx.arc(t.x, t.y, t.r + 8, 0, Math.PI * 2);
+          ctx.fillStyle = 'rgba(34,197,94,0.15)';
+          ctx.fill();
+          ctx.beginPath();
+          ctx.arc(t.x, t.y, t.r, 0, Math.PI * 2);
+          ctx.fillStyle = '#22c55e';
+          ctx.fill();
+          ctx.strokeStyle = '#16a34a';
+          ctx.lineWidth = 2;
+          ctx.stroke();
+          ctx.beginPath();
+          ctx.moveTo(t.x, t.y - t.r - 4); ctx.lineTo(t.x, t.y + t.r + 4);
+          ctx.moveTo(t.x - t.r - 4, t.y); ctx.lineTo(t.x + t.r + 4, t.y);
+          ctx.strokeStyle = '#fff';
+          ctx.lineWidth = 2;
+          ctx.stroke();
+        }
+
+        const pl = state.pulse;
+        if (pl && pl.active) {
+          const alpha = Math.max(0, 1 - pl.r / pl.maxR);
+          ctx.beginPath();
+          ctx.arc(pl.x, pl.y, pl.r, 0, Math.PI * 2);
+          ctx.strokeStyle = 'rgba(34,211,238,' + alpha + ')';
+          ctx.lineWidth = 3;
+          ctx.stroke();
+          ctx.beginPath();
+          ctx.arc(pl.x, pl.y, 3, 0, Math.PI * 2);
+          ctx.fillStyle = '#22d3ee';
+          ctx.fill();
+        }
+
+        const p = state.player;
+        if (p) {
+          ctx.save();
+          ctx.translate(p.x, p.y);
+          ctx.rotate(p.angle);
+          ctx.beginPath();
+          ctx.moveTo(10, 0);
+          ctx.lineTo(-7, -6);
+          ctx.lineTo(-7, 6);
+          ctx.closePath();
+          ctx.fillStyle = '#3b82f6';
           ctx.fill();
           ctx.strokeStyle = '#1e3a8a';
           ctx.lineWidth = 2;
           ctx.stroke();
+          if ((keys['ArrowUp'] || keys['w'] || keys['W']) && Math.abs(p.speed) > 0.05) {
+            ctx.beginPath();
+            ctx.moveTo(-7, -4); ctx.lineTo(-13, 0); ctx.lineTo(-7, 4);
+            ctx.fillStyle = 'rgba(59,130,246,0.5)';
+            ctx.fill();
+          }
+          ctx.restore();
+          ctx.beginPath();
+          ctx.moveTo(p.x, p.y);
+          ctx.lineTo(p.x + Math.cos(p.angle) * 18, p.y + Math.sin(p.angle) * 18);
+          ctx.strokeStyle = 'rgba(59,130,246,0.5)';
+          ctx.lineWidth = 2;
+          ctx.stroke();
         }
       }
 
+      let last = performance.now();
+      function loop(now) {
+        const dt = (now - last) / 1000;
+        last = now;
+        if (state.playing && !state.won) {
+          updatePlayer();
+          updatePulse();
+        }
+        for (let i = state.echoes.length - 1; i >= 0; i--) {
+          state.echoes[i].life -= 0.035;
+          if (state.echoes[i].life <= 0) state.echoes.splice(i, 1);
+        }
+        draw();
+        requestAnimationFrame(loop);
+      }
+
       resize();
-      draw();
+      initLevel();
+      requestAnimationFrame(loop);
     })();
   </script>
 </body>
