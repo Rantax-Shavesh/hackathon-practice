@@ -2165,6 +2165,688 @@ class NeuralNetSim {
 }
 
 // ==========================================================================
+// Chapter 5: Custom Machine Builder
+// ==========================================================================
+
+class CustomMachineSim {
+  constructor(canvas) {
+    this.canvas = canvas;
+    this.setupCanvas();
+    this.setupState();
+    this.bindControls();
+    this.animate();
+  }
+
+  setupCanvas() {
+    const { ctx, width, height, dpr } = setupHiDPI(this.canvas);
+    this.ctx = ctx;
+    this.width = width;
+    this.height = height;
+    this.dpr = dpr;
+    onResize(this.canvas, (ctx, w, h, dpr) => {
+      this.ctx = ctx;
+      this.width = w;
+      this.height = h;
+      this.dpr = dpr;
+      this.layoutComponents();
+    });
+  }
+
+  setupState() {
+    // Logic inputs
+    this.inputA = true;
+    this.inputB = false;
+
+    // Clock/thermal
+    this.clockMHz = 1000;
+    this.voltage = 1.1;
+    this.cooling = 65;
+    this.workload = 0.7;
+
+    // Neural decision
+    this.hiddenUnits = 4;
+    this.decisionThreshold = 0.5;
+
+    // Machine state
+    this.running = false;
+    this.time = 0;
+    this.temperature = 45;
+    this.throttleFactor = 1.0;
+    this.logicOut = 0;
+    this.neuralConf = 0;
+    this.power = 0;
+    this.throughput = 0;
+
+    // Neural network (simple 2-input -> hidden -> 1-output)
+    this.nnWeights1 = [];
+    this.nnBiases1 = [];
+    this.nnWeights2 = [];
+    this.nnBiases2 = 0;
+    this.initNeuralNet();
+
+    this.history = { temp: [], power: [], throughput: [], confidence: [] };
+    this.maxHistory = 120;
+    this.chapterEl = this.canvas.closest('.chapter');
+    this.layoutComponents();
+  }
+
+  initNeuralNet() {
+    const inSize = 3; // logicOut, normalizedTemp, normalizedPower
+    const hSize = this.hiddenUnits;
+    const outSize = 1;
+
+    this.nnWeights1 = [];
+    for (let j = 0; j < hSize; j++) {
+      this.nnWeights1.push(Array.from({ length: inSize }, () => rand(-1, 1) * Math.sqrt(2 / inSize)));
+    }
+    this.nnBiases1 = new Array(hSize).fill(0);
+
+    this.nnWeights2 = [];
+    for (let j = 0; j < outSize; j++) {
+      this.nnWeights2.push(Array.from({ length: hSize }, () => rand(-1, 1) * Math.sqrt(2 / hSize)));
+    }
+    this.nnBiases2 = 0;
+  }
+
+  relu(x) { return Math.max(0, x); }
+  sigmoid(x) { return 1 / (1 + Math.exp(-x)); }
+
+  forwardNeural(inputs) {
+    // Hidden layer
+    const hidden = [];
+    for (let j = 0; j < this.hiddenUnits; j++) {
+      let sum = this.nnBiases1[j];
+      for (let k = 0; k < inputs.length; k++) {
+        sum += this.nnWeights1[j][k] * inputs[k];
+      }
+      hidden.push(this.relu(sum));
+    }
+
+    // Output layer
+    let out = this.nnBiases2;
+    for (let j = 0; j < this.hiddenUnits; j++) {
+      out += this.nnWeights2[0][j] * hidden[j];
+    }
+    return this.sigmoid(out);
+  }
+
+  layoutComponents() {
+    const w = this.width, h = this.height;
+    this.machineRect = {
+      x: w * 0.1, y: h * 0.15,
+      w: w * 0.4, h: h * 0.7
+    };
+    this.graphRect = {
+      x: w * 0.55, y: h * 0.1,
+      w: w * 0.4, h: h * 0.7
+    };
+  }
+
+  // Presets
+  presets = {
+    'logic':   { inputA: true, inputB: false, clockMHz: 500, voltage: 0.9, cooling: 100, workload: 0.3, hiddenUnits: 4, threshold: 0.5 },
+    'thermal': { inputA: false, inputB: true, clockMHz: 4000, voltage: 1.3, cooling: 30, workload: 0.9, hiddenUnits: 8, threshold: 0.5 },
+    'neural':  { inputA: true, inputB: true, clockMHz: 2000, voltage: 1.0, cooling: 80, workload: 0.5, hiddenUnits: 12, threshold: 0.7 },
+    'full':    { inputA: true, inputB: true, clockMHz: 3000, voltage: 1.1, cooling: 65, workload: 0.7, hiddenUnits: 8, threshold: 0.5 }
+  };
+
+  applyPreset(key) {
+    const p = this.presets[key];
+    if (!p) return;
+    this.inputA = p.inputA;
+    this.inputB = p.inputB;
+    this.clockMHz = p.clockMHz;
+    this.voltage = p.voltage;
+    this.cooling = p.cooling;
+    this.workload = p.workload;
+    this.hiddenUnits = p.hiddenUnits;
+    this.decisionThreshold = p.threshold;
+    this.initNeuralNet();
+    this.updateUI();
+    sound.chime();
+  }
+
+  updateUI() {
+    $('#ch5-input-a').checked = this.inputA;
+    $('#ch5-input-b').checked = this.inputB;
+    $('#ch5-a-val').textContent = this.inputA ? '1' : '0';
+    $('#ch5-b-val').textContent = this.inputB ? '1' : '0';
+
+    $('#ch5-clock').value = this.clockMHz;
+    $('#ch5-clock-val').textContent = this.clockMHz.toFixed(0) + ' MHz';
+    $('#ch5-voltage').value = this.voltage;
+    $('#ch5-voltage-val').textContent = this.voltage.toFixed(2) + ' V';
+    $('#ch5-cooling').value = this.cooling;
+    $('#ch5-cooling-val').textContent = this.cooling + ' W';
+    $('#ch5-workload').value = this.workload * 100;
+    $('#ch5-workload-val').textContent = Math.round(this.workload * 100) + '%';
+
+    $('#ch5-hidden').value = this.hiddenUnits;
+    $('#ch5-hidden-val').textContent = this.hiddenUnits;
+    $('#ch5-threshold').value = this.decisionThreshold;
+    $('#ch5-threshold-val').textContent = this.decisionThreshold.toFixed(2);
+
+    $('#ch5-run').textContent = this.running ? 'Pause Machine' : 'Run Machine';
+    $('#ch5-run').setAttribute('data-training', this.running ? 'true' : 'false');
+
+    this.updateShareURL();
+  }
+
+  bindControls() {
+    // Logic inputs
+    $('#ch5-input-a').addEventListener('change', () => {
+      this.inputA = $('#ch5-input-a').checked;
+      $('#ch5-a-val').textContent = this.inputA ? '1' : '0';
+      this.updateMachine();
+      sound.click();
+    });
+    $('#ch5-input-b').addEventListener('change', () => {
+      this.inputB = $('#ch5-input-b').checked;
+      $('#ch5-b-val').textContent = this.inputB ? '1' : '0';
+      this.updateMachine();
+      sound.click();
+    });
+
+    // Clock/thermal
+    $('#ch5-clock').addEventListener('input', () => {
+      this.clockMHz = parseFloat($('#ch5-clock').value);
+      $('#ch5-clock-val').textContent = this.clockMHz.toFixed(0) + ' MHz';
+      this.updateMachine();
+      sound.tone(200 + this.clockMHz / 50, 'sine', 0.02, 0.02);
+    });
+    $('#ch5-voltage').addEventListener('input', () => {
+      this.voltage = parseFloat($('#ch5-voltage').value);
+      $('#ch5-voltage-val').textContent = this.voltage.toFixed(2) + ' V';
+      this.updateMachine();
+      sound.tone(400 + this.voltage * 200, 'sine', 0.02, 0.02);
+    });
+    $('#ch5-cooling').addEventListener('input', () => {
+      this.cooling = parseInt($('#ch5-cooling').value, 10);
+      $('#ch5-cooling-val').textContent = this.cooling + ' W';
+      this.updateMachine();
+    });
+    $('#ch5-workload').addEventListener('input', () => {
+      this.workload = parseInt($('#ch5-workload').value, 10) / 100;
+      $('#ch5-workload-val').textContent = Math.round(this.workload * 100) + '%';
+      this.updateMachine();
+    });
+
+    // Neural
+    $('#ch5-hidden').addEventListener('input', () => {
+      this.hiddenUnits = parseInt($('#ch5-hidden').value, 10);
+      $('#ch5-hidden-val').textContent = this.hiddenUnits;
+      this.initNeuralNet();
+      this.updateMachine();
+    });
+    $('#ch5-threshold').addEventListener('input', () => {
+      this.decisionThreshold = parseFloat($('#ch5-threshold').value);
+      $('#ch5-threshold-val').textContent = this.decisionThreshold.toFixed(2);
+      this.updateMachine();
+    });
+
+    // Run/Reset
+    $('#ch5-run').addEventListener('click', () => {
+      this.running = !this.running;
+      $('#ch5-run').textContent = this.running ? 'Pause Machine' : 'Run Machine';
+      $('#ch5-run').setAttribute('data-training', this.running ? 'true' : 'false');
+      if (this.running) sound.chime();
+      else sound.click();
+    });
+    $('#ch5-reset').addEventListener('click', () => {
+      this.running = false;
+      this.temperature = 45;
+      this.throttleFactor = 1.0;
+      this.epoch = 0;
+      this.initNeuralNet();
+      this.updateUI();
+      this.updateMachine();
+      sound.click();
+    });
+
+    // Presets
+    $$('#ch5-preset-logic').forEach(btn => btn.addEventListener('click', () => { this.applyPreset('logic'); }));
+    $$('#ch5-preset-thermal').forEach(btn => btn.addEventListener('click', () => { this.applyPreset('thermal'); }));
+    $$('#ch5-preset-neural').forEach(btn => btn.addEventListener('click', () => { this.applyPreset('neural'); }));
+    $$('#ch5-preset-full').forEach(btn => btn.addEventListener('click', () => { this.applyPreset('full'); }));
+
+    // Share
+    $('#ch5-copy-share').addEventListener('click', async () => {
+      try {
+        await navigator.clipboard.writeText($('#ch5-share-url').value);
+        const fb = $('#ch5-share-feedback');
+        fb.textContent = 'Copied!';
+        fb.className = 'share-feedback copied';
+        setTimeout(() => { fb.textContent = ''; fb.className = 'share-feedback'; }, 1500);
+        sound.click();
+      } catch (e) {
+        const fb = $('#ch5-share-feedback');
+        fb.textContent = 'Copy failed';
+        fb.className = 'share-feedback error';
+        setTimeout(() => { fb.textContent = ''; fb.className = 'share-feedback'; }, 1500);
+      }
+    });
+
+    this.updateUI();
+  }
+
+  updateMachine() {
+    // Logic layer
+    const andOut = this.inputA && this.inputB ? 1 : 0;
+    const orOut = this.inputA || this.inputB ? 1 : 0;
+    const xorOut = this.inputA !== this.inputB ? 1 : 0;
+    this.logicOut = xorOut; // Use XOR as primary output
+
+    // Thermal layer
+    const C = 1e-9;
+    const freqHz = this.clockMHz * 1e6;
+    const dynamicPower = C * this.voltage * this.voltage * freqHz * this.workload;
+    const staticPower = 0.5 * this.voltage * Math.exp((this.temperature - 25) / 50);
+    this.power = (dynamicPower + staticPower) * 1e-3;
+
+    const ambient = 25;
+    const Rth = 1.0 / (this.cooling / 100);
+    const targetTemp = ambient + this.power * Rth;
+    const tau = 5.0;
+    this.temperature += (targetTemp - this.temperature) * (1 - Math.exp(-1/60 / tau));
+
+    const tjMax = 100;
+    const throttleStart = 85;
+    if (this.temperature <= throttleStart) {
+      this.throttleFactor = 1.0;
+    } else {
+      this.throttleFactor = clamp(1.0 - (this.temperature - throttleStart) / (tjMax - throttleStart) * 0.7, 0.3, 1.0);
+    }
+
+    const baseIPC = this.clockMHz > 1000 ? 2.0 : (this.clockMHz > 100 ? 1.0 : 0.5);
+    this.throughput = this.clockMHz * baseIPC * this.throttleFactor * this.workload;
+
+    // Neural decision layer
+    const normTemp = clamp((this.temperature - 25) / 75, 0, 1);
+    const normPower = clamp(this.power / 100, 0, 1);
+    const nnInput = [this.logicOut, normTemp, normPower];
+    this.neuralConf = this.forwardNeural(nnInput);
+
+    // Update history
+    this.history.temp.push(this.temperature);
+    this.history.power.push(this.power);
+    this.history.throughput.push(this.throughput / 1000);
+    this.history.confidence.push(this.neuralConf);
+    for (const key of ['temp', 'power', 'throughput', 'confidence']) {
+      if (this.history[key].length > this.maxHistory) this.history[key].shift();
+    }
+
+    this.updateReadouts();
+    this.updateShareURL();
+  }
+
+  updateReadouts() {
+    $('#ch5-and').textContent = (this.inputA && this.inputB) ? '1' : '0';
+    $('#ch5-or').textContent = (this.inputA || this.inputB) ? '1' : '0';
+    $('#ch5-xor').textContent = (this.inputA !== this.inputB) ? '1' : '0';
+
+    $('#ch5-logic-out').textContent = this.logicOut;
+    $('#ch5-temp').textContent = this.temperature.toFixed(0) + ' °C';
+    $('#ch5-power').textContent = this.power.toFixed(1) + ' W';
+    $('#ch5-neural-conf').textContent = (this.neuralConf * 100).toFixed(1) + '%';
+
+    const stateEl = $('#ch5-state');
+    if (this.running) {
+      stateEl.textContent = 'Running';
+      stateEl.setAttribute('data-state', 'running');
+    } else {
+      stateEl.textContent = 'Idle';
+      stateEl.setAttribute('data-state', 'idle');
+    }
+
+    // Update gate visual states
+    $$('#ch5-basic-outputs .gate-output').forEach(el => el.classList.remove('high'));
+    if (this.inputA && this.inputB) $('#ch5-and').parentElement.classList.add('high');
+    if (this.inputA || this.inputB) $('#ch5-or').parentElement.classList.add('high');
+    if (this.inputA !== this.inputB) $('#ch5-xor').parentElement.classList.add('high');
+  }
+
+  updateShareURL() {
+    const state = {
+      a: this.inputA ? 1 : 0,
+      b: this.inputB ? 1 : 0,
+      c: Math.round(this.clockMHz),
+      v: Math.round(this.voltage * 100) / 100,
+      cl: this.cooling,
+      w: Math.round(this.workload * 100),
+      h: this.hiddenUnits,
+      t: Math.round(this.decisionThreshold * 100) / 100
+    };
+    const hash = '#' + btoa(JSON.stringify(state)).replace(/[+/=]/g, c => ({ '+': '-', '/': '_', '=': '' })[c]);
+    if (location.hash !== hash) {
+      history.replaceState(null, '', hash);
+    }
+    $('#ch5-share-url').value = location.origin + location.pathname + hash;
+  }
+
+  static parseHashState() {
+    try {
+      const hash = location.hash;
+      if (!hash || !hash.startsWith('#')) return null;
+      const b64 = hash.slice(1).replace(/[-_]/g, c => ({ '-': '+', '_': '/' })[c]) + '==';
+      const json = JSON.parse(atob(b64));
+      // Validate fields
+      if (typeof json.a !== 'number' || typeof json.b !== 'number') return null;
+      if (typeof json.c !== 'number' || json.c < 1 || json.c > 5000) return null;
+      if (typeof json.v !== 'number' || json.v < 0.6 || json.v > 1.5) return null;
+      if (typeof json.cl !== 'number' || json.cl < 15 || json.cl > 250) return null;
+      if (typeof json.w !== 'number' || json.w < 0 || json.w > 100) return null;
+      if (typeof json.h !== 'number' || json.h < 2 || json.h > 32) return null;
+      if (typeof json.t !== 'number' || json.t < 0.1 || json.t > 0.9) return null;
+      return json;
+    } catch (e) {
+      return null;
+    }
+  }
+
+  hydrateFromHash() {
+    const state = CustomMachineSim.parseHashState();
+    if (!state) return false;
+
+    this.inputA = state.a === 1;
+    this.inputB = state.b === 1;
+    this.clockMHz = state.c;
+    this.voltage = state.v;
+    this.cooling = state.cl;
+    this.workload = state.w / 100;
+    this.hiddenUnits = state.h;
+    this.decisionThreshold = state.t;
+    this.initNeuralNet();
+    this.updateUI();
+    this.updateMachine();
+    return true;
+  }
+
+  draw() {
+    const { ctx, width, height } = this;
+    ctx.clearRect(0, 0, width, height);
+
+    this.drawMachine();
+    this.drawGraphs();
+    this.drawLegend();
+  }
+
+  drawMachine() {
+    const { ctx } = this;
+    const r = this.machineRect;
+
+    // Machine package outline
+    ctx.fillStyle = '#161c26';
+    ctx.strokeStyle = '#333e4d';
+    ctx.lineWidth = 2;
+    this.roundRect(ctx, r.x, r.y, r.w, r.h, 10);
+    ctx.fill();
+    ctx.stroke();
+
+    // Logic section (top left)
+    const logicX = r.x + 20;
+    const logicY = r.y + 20;
+    const logicW = r.w - 40;
+    const logicH = 60;
+
+    ctx.fillStyle = '#0f151d';
+    ctx.strokeStyle = '#333e4d';
+    ctx.lineWidth = 1;
+    this.roundRect(ctx, logicX, logicY, logicW, logicH, 6);
+    ctx.fill();
+    ctx.stroke();
+
+    ctx.fillStyle = '#8c96a4';
+    ctx.font = 'bold 10px monospace';
+    ctx.textAlign = 'left';
+    ctx.fillText('LOGIC LAYER', logicX + 10, logicY + 18);
+
+    // Input indicators
+    const inputY = logicY + 40;
+    this.drawIoIndicator(logicX + 20, inputY, this.inputA, 'A');
+    this.drawIoIndicator(logicX + 60, inputY, this.inputB, 'B');
+
+    // Gate outputs
+    const gateY = logicY + 40;
+    const gateX = logicX + 120;
+    const gateLabels = ['AND', 'OR', 'XOR'];
+    const gateVals = [this.inputA && this.inputB, this.inputA || this.inputB, this.inputA !== this.inputB];
+    gateLabels.forEach((label, i) => {
+      const gx = gateX + i * 50;
+      this.drawIoIndicator(gx, gateY, gateVals[i], label);
+    });
+
+    // Thermal section (middle)
+    const thermY = r.y + 100;
+    ctx.fillStyle = '#0f151d';
+    ctx.strokeStyle = '#333e4d';
+    ctx.lineWidth = 1;
+    this.roundRect(ctx, logicX, thermY, logicW, 70, 6);
+    ctx.fill();
+    ctx.stroke();
+
+    ctx.fillStyle = '#8c96a4';
+    ctx.font = 'bold 10px monospace';
+    ctx.fillText('THERMAL LAYER', logicX + 10, thermY + 18);
+
+    // Thermal bar
+    const barX = logicX + 20;
+    const barY = thermY + 35;
+    const barW = logicW - 40;
+    const barH = 12;
+    const heatRatio = clamp((this.temperature - 25) / 75, 0, 1);
+
+    ctx.fillStyle = '#232a36';
+    ctx.fillRect(barX, barY, barW, barH);
+    const heatColor = heatRatio < 0.4 ? '#00d4aa' : (heatRatio < 0.7 ? '#ffb84d' : '#ff6b6b');
+    ctx.fillStyle = heatColor;
+    ctx.fillRect(barX, barY, barW * heatRatio, barH);
+    ctx.strokeStyle = '#333e4d';
+    ctx.lineWidth = 1;
+    ctx.strokeRect(barX, barY, barW, barH);
+
+    ctx.fillStyle = '#8c96a4';
+    ctx.font = '9px monospace';
+    ctx.textAlign = 'right';
+    ctx.fillText(this.temperature.toFixed(0) + '°C', logicX + logicW - 10, thermY + 50);
+
+    // Neural section (bottom)
+    const neuralY = r.y + 190;
+    ctx.fillStyle = '#0f151d';
+    ctx.strokeStyle = '#333e4d';
+    ctx.lineWidth = 1;
+    this.roundRect(ctx, logicX, neuralY, logicW, 60, 6);
+    ctx.fill();
+    ctx.stroke();
+
+    ctx.fillStyle = '#8c96a4';
+    ctx.font = 'bold 10px monospace';
+    ctx.fillText('NEURAL DECISION', logicX + 10, neuralY + 18);
+
+    // Confidence bar
+    const confBarX = logicX + 20;
+    const confBarY = neuralY + 35;
+    const confBarW = logicW - 40;
+    const confBarH = 12;
+
+    ctx.fillStyle = '#232a36';
+    ctx.fillRect(confBarX, confBarY, confBarW, confBarH);
+    const confColor = this.neuralConf > this.decisionThreshold ? '#00d4aa' : '#ff6b6b';
+    ctx.fillStyle = confColor;
+    ctx.fillRect(confBarX, confBarY, confBarW * this.neuralConf, confBarH);
+    ctx.strokeStyle = '#333e4d';
+    ctx.lineWidth = 1;
+    ctx.strokeRect(confBarX, confBarY, confBarW, confBarH);
+
+    ctx.fillStyle = '#8c96a4';
+    ctx.font = '9px monospace';
+    ctx.textAlign = 'right';
+    ctx.fillText((this.neuralConf * 100).toFixed(0) + '%', logicX + logicW - 10, neuralY + 50);
+
+    // Machine label
+    ctx.fillStyle = '#8c96a4';
+    ctx.font = '11px monospace';
+    ctx.textAlign = 'center';
+    ctx.fillText(this.running ? 'RUNNING' : 'IDLE', r.x + r.w / 2, r.y + r.h - 15);
+  }
+
+  drawIoIndicator(x, y, high, label) {
+    const { ctx } = this;
+    const r = 10;
+
+    ctx.fillStyle = high ? 'rgba(0, 212, 170, 0.2)' : '#161c26';
+    ctx.strokeStyle = high ? '#00d4aa' : '#333e4d';
+    ctx.lineWidth = high ? 2.5 : 2;
+    ctx.beginPath();
+    ctx.arc(x, y, r, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.stroke();
+
+    if (high) {
+      ctx.shadowColor = high ? '#00d4aa' : '#333e4d';
+      ctx.shadowBlur = 10;
+      ctx.strokeStyle = '#00d4aa';
+      ctx.beginPath();
+      ctx.arc(x, y, r, 0, Math.PI * 2);
+      ctx.stroke();
+      ctx.shadowBlur = 0;
+    }
+
+    ctx.fillStyle = high ? '#00d4aa' : '#5c6674';
+    ctx.font = 'bold 11px monospace';
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+    ctx.fillText(label, x, y);
+  }
+
+  drawGraphs() {
+    const { ctx } = this;
+    const g = this.graphRect;
+
+    ctx.fillStyle = '#080a0f';
+    ctx.strokeStyle = '#232a36';
+    ctx.lineWidth = 1;
+    this.roundRect(ctx, g.x, g.y, g.w, g.h, 8);
+    ctx.fill();
+    ctx.stroke();
+
+    // Grid
+    ctx.strokeStyle = 'rgba(0, 212, 170, 0.05)';
+    ctx.lineWidth = 1;
+    for (let i = 1; i < 4; i++) {
+      const y = g.y + g.h * i / 4;
+      ctx.beginPath();
+      ctx.moveTo(g.x, y);
+      ctx.lineTo(g.x + g.w, y);
+      ctx.stroke();
+    }
+    for (let i = 1; i < 5; i++) {
+      const x = g.x + g.w * i / 5;
+      ctx.beginPath();
+      ctx.moveTo(x, g.y);
+      ctx.lineTo(x, g.y + g.h);
+      ctx.stroke();
+    }
+
+    // Draw lines
+    const colors = {
+      temp: '#ff6b6b',
+      power: '#ffb84d',
+      throughput: '#00d4aa',
+      confidence: '#a88cff'
+    };
+    const scales = {
+      temp: { min: 20, max: 110 },
+      power: { min: 0, max: 100 },
+      throughput: { min: 0, max: 20 },
+      confidence: { min: 0, max: 1 }
+    };
+
+    for (const key of ['temp', 'power', 'throughput', 'confidence']) {
+      const data = this.history[key];
+      if (data.length < 2) continue;
+      const scale = scales[key];
+      ctx.strokeStyle = colors[key];
+      ctx.lineWidth = 2;
+      ctx.lineCap = 'round';
+      ctx.lineJoin = 'round';
+      ctx.beginPath();
+      data.forEach((val, i) => {
+        const x = g.x + (i / (this.maxHistory - 1)) * g.w;
+        const y = g.y + g.h - ((val - scale.min) / (scale.max - scale.min)) * g.h;
+        if (i === 0) ctx.moveTo(x, y);
+        else ctx.lineTo(x, y);
+      });
+      ctx.stroke();
+    }
+
+    // Y-axis labels
+    ctx.fillStyle = '#5c6674';
+    ctx.font = '9px monospace';
+    ctx.textAlign = 'right';
+    ctx.fillText('110°C', g.x - 8, g.y + 12);
+    ctx.fillText('100W', g.x - 8, g.y + g.h * 0.25 + 4);
+    ctx.fillText('20 GIPS', g.x - 8, g.y + g.h * 0.5 + 4);
+    ctx.fillText('1.0', g.x - 8, g.y + g.h * 0.75 + 4);
+  }
+
+  drawLegend() {
+    const { ctx } = this;
+    const g = this.graphRect;
+    const items = [
+      { label: 'Temp', color: '#ff6b6b' },
+      { label: 'Power', color: '#ffb84d' },
+      { label: 'Throughput', color: '#00d4aa' },
+      { label: 'Confidence', color: '#a88cff' }
+    ];
+
+    ctx.font = '10px monospace';
+    ctx.textAlign = 'left';
+    items.forEach((item, i) => {
+      const x = g.x + 10;
+      const y = g.y + 20 + i * 20;
+      ctx.fillStyle = item.color;
+      ctx.fillRect(x, y - 8, 16, 4);
+      ctx.fillStyle = '#8c96a4';
+      ctx.fillText(item.label, x + 22, y);
+    });
+  }
+
+  roundRect(ctx, x, y, w, h, r) {
+    ctx.beginPath();
+    ctx.moveTo(x + r, y);
+    ctx.lineTo(x + w - r, y);
+    ctx.quadraticCurveTo(x + w, y, x + w, y + r);
+    ctx.lineTo(x + w, y + h - r);
+    ctx.quadraticCurveTo(x + w, y + h, x + w - r, y + h);
+    ctx.lineTo(x + r, y + h);
+    ctx.quadraticCurveTo(x, y + h, x, y + h - r);
+    ctx.lineTo(x, y + r);
+    ctx.quadraticCurveTo(x, y, x + r, y);
+    ctx.closePath();
+  }
+
+  animate() {
+    // Pause loop when chapter is offscreen
+    if (this.chapterEl && !this.chapterEl.classList.contains('visible')) {
+      requestAnimationFrame(() => this.animate());
+      return;
+    }
+
+    const now = performance.now();
+    const dt = Math.min((now - (this.lastTime || now)) / 1000, 0.05);
+    this.lastTime = now;
+    this.time += dt;
+
+    if (this.running) {
+      this.updateMachine();
+    }
+
+    this.draw();
+    requestAnimationFrame(() => this.animate());
+  }
+}
+
+// ==========================================================================
 // Chapter Navigation / Scroll Spy
 // ==========================================================================
 
@@ -2273,6 +2955,8 @@ function initSoundToggle() {
   updateUI();
 }
 
+let machineSim = null;
+
 // ==========================================================================
 // Main Initialization
 // ==========================================================================
@@ -2282,11 +2966,13 @@ function init() {
   const ch2Canvas = $('#ch2-canvas');
   const ch3Canvas = $('#ch3-canvas');
   const ch4Canvas = $('#ch4-canvas');
+  const ch5Canvas = $('#ch5-canvas');
 
   if (ch1Canvas) new CircuitSim(ch1Canvas);
   if (ch2Canvas) new LogicSim(ch2Canvas);
   if (ch3Canvas) new CPUSim(ch3Canvas);
   if (ch4Canvas) new NeuralNetSim(ch4Canvas);
+  if (ch5Canvas) machineSim = new CustomMachineSim(ch5Canvas);
 
   new ChapterNav();
   initSmoothScroll();
@@ -2311,7 +2997,12 @@ function init() {
   document.addEventListener('pointerdown', startAudio, { once: true });
   document.addEventListener('keydown', startAudio, { once: true });
 
-  console.log('Inside a Machine: From Electron to AI — Initialized (Chapters 1-4)');
+  // Hydrate machine state from URL hash if present
+  if (machineSim) {
+    machineSim.hydrateFromHash();
+  }
+
+  console.log('Inside a Machine: From Electron to AI — Initialized (Chapters 1-5)');
 }
 
 if (document.readyState === 'loading') {
@@ -2320,4 +3011,4 @@ if (document.readyState === 'loading') {
   init();
 }
 
-export { CircuitSim, LogicSim, CPUSim, NeuralNetSim, ChapterNav, SoundEngine, sound };
+export { CircuitSim, LogicSim, CPUSim, NeuralNetSim, CustomMachineSim, ChapterNav, SoundEngine, sound };

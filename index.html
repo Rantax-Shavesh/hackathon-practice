@@ -55,10 +55,12 @@
           </a>
           <span class="rail-dot" aria-hidden="true"></span>
         </li>
-        <li data-chapter="5" class="rail-coming">
-          <span class="rail-num">05</span>
-          <span class="rail-title">Transformers & LLMs</span>
-          <span class="rail-badge">Soon</span>
+        <li data-chapter="5">
+          <a href="#ch5" class="rail-link">
+            <span class="rail-num">05</span>
+            <span class="rail-title">Custom Machine Builder</span>
+          </a>
+          <span class="rail-dot" aria-hidden="true"></span>
         </li>
       </ol>
       <div class="rail-sound" aria-hidden="false">
@@ -423,16 +425,146 @@ Cout = (A ∧ B) ∨ (A ∧ Cin) ∨ (B ∧ Cin)</code></pre>
       </div>
     </section>
 
-    <section id="ch5-placeholder" class="chapter reveal chapter-placeholder" data-chapter="5" aria-labelledby="ch5-title">
+    <section id="ch5" class="chapter reveal" data-chapter="5" aria-labelledby="ch5-title">
       <div class="chapter-container">
         <header class="chapter-header">
           <span class="chapter-badge">Chapter 5</span>
-          <h2 id="ch5-title">Transformers & LLMs <span class="coming-badge">Coming Soon</span></h2>
-          <p class="chapter-lead">Attention mechanisms, token embeddings, and how next-token prediction scales to language understanding.</p>
+          <h2 id="ch5-title">Custom Machine Builder</h2>
+          <p class="chapter-lead">Assemble a custom end-to-end machine combining logic gates, clock/thermal behavior, and a simple neural decision layer. Configure inputs, run the simulation, and inspect live telemetry.</p>
         </header>
-        <div class="placeholder-content">
-          <svg viewBox="0 0 120 120" class="placeholder-icon" aria-hidden="true"><circle cx="30" cy="30" r="12" fill="none" stroke="currentColor" stroke-width="3"/><circle cx="90" cy="30" r="12" fill="none" stroke="currentColor" stroke-width="3"/><circle cx="60" cy="90" r="12" fill="none" stroke="currentColor" stroke-width="3"/><path d="M42 30 L48 78 M78 30 L72 78 M30 42 L70 78" fill="none" stroke="currentColor" stroke-width="2"/></svg>
-          <p>This chapter will feature a token-level attention visualization and a tiny GPT-style model.</p>
+
+        <div class="chapter-body">
+          <div class="simulation-panel" id="ch5-sim">
+            <canvas id="ch5-canvas" aria-label="Custom machine builder: logic gates, clock/thermal, and neural decision visualization"></canvas>
+          </div>
+
+          <div class="controls-panel" id="ch5-controls">
+            <div class="control-group">
+              <h3>Machine Presets</h3>
+              <div class="btn-row">
+                <button class="btn btn-secondary" id="ch5-preset-logic">Logic Only</button>
+                <button class="btn btn-secondary" id="ch5-preset-thermal">Thermal Only</button>
+                <button class="btn btn-secondary" id="ch5-preset-neural">Neural Only</button>
+                <button class="btn btn-secondary" id="ch5-preset-full">Full Machine</button>
+              </div>
+            </div>
+
+            <div class="control-group">
+              <h3>Logic Gates</h3>
+              <div class="gate-inputs">
+                <label class="binary-toggle">
+                  <span>Input A</span>
+                  <input type="checkbox" id="ch5-input-a" checked>
+                  <span class="toggle-slider" aria-hidden="true"></span>
+                  <span class="toggle-value tabular-nums" id="ch5-a-val">1</span>
+                </label>
+                <label class="binary-toggle">
+                  <span>Input B</span>
+                  <input type="checkbox" id="ch5-input-b">
+                  <span class="toggle-slider" aria-hidden="true"></span>
+                  <span class="toggle-value tabular-nums" id="ch5-b-val">0</span>
+                </label>
+              </div>
+              <div class="gate-outputs" id="ch5-basic-outputs">
+                <div class="gate-output">
+                  <span class="gate-name">AND</span>
+                  <span class="gate-result tabular-nums" id="ch5-and">0</span>
+                </div>
+                <div class="gate-output">
+                  <span class="gate-name">OR</span>
+                  <span class="gate-result tabular-nums" id="ch5-or">1</span>
+                </div>
+                <div class="gate-output">
+                  <span class="gate-name">XOR</span>
+                  <span class="gate-result tabular-nums" id="ch5-xor">1</span>
+                </div>
+              </div>
+            </div>
+
+            <div class="control-group">
+              <h3>Clock & Thermal</h3>
+              <div class="slider-row">
+                <label for="ch5-clock">Clock (MHz)</label>
+                <input type="range" id="ch5-clock" min="1" max="5000" step="1" value="1000" aria-describedby="ch5-clock-val">
+                <output id="ch5-clock-val" class="slider-value tabular-nums">1000 MHz</output>
+              </div>
+              <div class="slider-row">
+                <label for="ch5-voltage">Voltage (V)</label>
+                <input type="range" id="ch5-voltage" min="0.6" max="1.5" step="0.01" value="1.1" aria-describedby="ch5-voltage-val">
+                <output id="ch5-voltage-val" class="slider-value tabular-nums">1.10 V</output>
+              </div>
+              <div class="slider-row">
+                <label for="ch5-cooling">Cooling (W)</label>
+                <input type="range" id="ch5-cooling" min="15" max="250" step="1" value="65" aria-describedby="ch5-cooling-val">
+                <output id="ch5-cooling-val" class="slider-value tabular-nums">65 W</output>
+              </div>
+              <div class="slider-row">
+                <label for="ch5-workload">Workload</label>
+                <input type="range" id="ch5-workload" min="0" max="100" step="1" value="70" aria-describedby="ch5-workload-val">
+                <output id="ch5-workload-val" class="slider-value tabular-nums">70%</output>
+              </div>
+            </div>
+
+            <div class="control-group">
+              <h3>Neural Decision</h3>
+              <div class="slider-row">
+                <label for="ch5-hidden">Hidden Units</label>
+                <input type="range" id="ch5-hidden" min="2" max="16" step="2" value="4" aria-describedby="ch5-hidden-val">
+                <output id="ch5-hidden-val" class="slider-value tabular-nums">4</output>
+              </div>
+              <div class="slider-row">
+                <label for="ch5-threshold">Decision Threshold</label>
+                <input type="range" id="ch5-threshold" min="0.1" max="0.9" step="0.05" value="0.5" aria-describedby="ch5-threshold-val">
+                <output id="ch5-threshold-val" class="slider-value tabular-nums">0.50</output>
+              </div>
+            </div>
+
+            <div class="control-group">
+              <div class="btn-row">
+                <button class="btn btn-primary" id="ch5-run">Run Machine</button>
+                <button class="btn btn-secondary" id="ch5-reset">Reset</button>
+              </div>
+            </div>
+
+            <div class="readouts" role="status" aria-live="polite">
+              <div class="readout">
+                <span class="readout-label">Logic Out</span>
+                <span class="readout-value tabular-nums" id="ch5-logic-out">0</span>
+              </div>
+              <div class="readout">
+                <span class="readout-label">Temp (°C)</span>
+                <span class="readout-value tabular-nums" id="ch5-temp">45 °C</span>
+              </div>
+              <div class="readout">
+                <span class="readout-label">Power (W)</span>
+                <span class="readout-value tabular-nums" id="ch5-power">0.0 W</span>
+              </div>
+              <div class="readout">
+                <span class="readout-label">Neural Conf.</span>
+                <span class="readout-value tabular-nums" id="ch5-neural-conf">—</span>
+              </div>
+              <div class="readout">
+                <span class="readout-label">Machine State</span>
+                <span class="readout-value tabular-nums" id="ch5-state">Idle</span>
+              </div>
+            </div>
+
+            <div class="control-group share-group">
+              <h3>Share</h3>
+              <div class="share-row">
+                <input type="text" id="ch5-share-url" readonly class="share-input">
+                <button class="btn btn-primary" id="ch5-copy-share">Copy Link</button>
+                <span id="ch5-share-feedback" class="share-feedback"></span>
+              </div>
+            </div>
+
+            <details class="theory-note">
+              <summary>How the machine works</summary>
+              <p><strong>Logic Layer:</strong> Binary inputs flow through AND/OR/XOR gates to produce a logic output.</p>
+              <p><strong>Thermal Layer:</strong> Clock speed and voltage drive power (<code>P = C × V² × f</code>), which heats the die and can trigger thermal throttling.</p>
+              <p><strong>Neural Layer:</strong> A tiny network classifies the combined logic+thermal state into a confidence score using the configured threshold.</p>
+            </details>
+          </div>
         </div>
       </div>
     </section>
