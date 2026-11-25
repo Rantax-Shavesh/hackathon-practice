@@ -1609,6 +1609,7 @@ class NeuralNetSim {
     this.setupCanvas();
     this.setupState();
     this.bindControls();
+    this.draw();
     this.animate();
   }
 
@@ -2200,6 +2201,7 @@ class CustomMachineSim {
     this.setupCanvas();
     this.setupState();
     this.bindControls();
+    this.draw();
     this.animate();
   }
 
