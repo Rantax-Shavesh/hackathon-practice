@@ -1624,6 +1624,20 @@ class NeuralNetSim {
       this.height = h;
       this.dpr = dpr;
     });
+
+    // Set up loss chart canvas separately
+    const lossCanvas = $('#ch4-loss-chart');
+    if (lossCanvas) {
+      const { ctx: lossCtx, width: lw, height: lh, dpr: ldpr } = setupHiDPI(lossCanvas);
+      this.lossCtx = lossCtx;
+      this.lossWidth = lw;
+      this.lossHeight = lh;
+      this.lossResizeCleanup = onResize(lossCanvas, (ctx, w, h, dpr) => {
+        this.lossCtx = ctx;
+        this.lossWidth = w;
+        this.lossHeight = h;
+      });
+    }
   }
 
   setupState() {
@@ -2090,11 +2104,13 @@ class NeuralNetSim {
   }
 
   drawLossChart() {
-    const { ctx } = this;
+    const ctx = this.lossCtx || this.ctx;
+    const w = this.lossWidth || this.width;
+    const h = this.lossHeight || this.height;
     const chartH = 100;
-    const chartY = this.height - chartH - 10;
+    const chartY = h - chartH - 10;
     const chartX = 10;
-    const chartW = this.width - 20;
+    const chartW = w - 20;
 
     // Background
     ctx.fillStyle = 'rgba(8, 10, 15, 0.9)';
