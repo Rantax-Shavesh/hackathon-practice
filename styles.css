@@ -456,6 +456,7 @@ main { padding-left: var(--rail-width); min-height: 100vh; }
   overflow: hidden;
   aspect-ratio: 16 / 10;
   min-height: 400px;
+  min-width: 0;
   box-shadow: 0 20px 40px -10px rgba(0,0,0,0.4);
 }
 
@@ -497,6 +498,7 @@ main { padding-left: var(--rail-width); min-height: 100vh; }
   flex-direction: column;
   gap: var(--space-lg);
   box-shadow: 0 20px 40px -10px rgba(0,0,0,0.4);
+  min-width: 0;
 }
 
 .control-group { display: flex; flex-direction: column; gap: var(--space-sm); }
@@ -951,6 +953,7 @@ main { padding-left: var(--rail-width); min-height: 100vh; }
 
 .share-row {
   display: flex;
+  flex-wrap: wrap;
   gap: var(--space-xs);
   margin-top: var(--space-sm);
 }
