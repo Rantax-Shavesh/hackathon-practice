@@ -1,0 +1,281 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Inside a Machine: From Electron to AI</title>
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+  <a href="#main" class="skip-link">Skip to main content</a>
+
+  <header class="hero" role="banner">
+    <div class="hero-content">
+      <p class="hero-tag">Interactive Scrollytelling</p>
+      <h1>Inside a Machine:<br><span class="hero-accent">From Electron to AI</span></h1>
+      <p class="hero-subtitle">Journey through five layers of computation — from drifting electrons to thinking machines. Scroll to begin.</p>
+      <div class="hero-progress" aria-hidden="true">
+        <div class="hero-progress-bar" id="heroProgressBar"></div>
+      </div>
+    </div>
+    <div class="hero-scroll-hint" aria-hidden="true">
+      <svg viewBox="0 0 24 24" width="24" height="24"><path d="M12 4v16M8 12l4 4 4-4" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+    </div>
+  </header>
+
+  <nav class="chapter-rail" id="chapterRail" role="navigation" aria-label="Chapter navigation">
+    <div class="rail-inner">
+      <div class="rail-progress" id="railProgress" aria-hidden="true"></div>
+      <ol class="rail-chapters" id="railChapters">
+        <li data-chapter="1">
+          <a href="#ch1" class="rail-link">
+            <span class="rail-num">01</span>
+            <span class="rail-title">Electrons & Voltage</span>
+          </a>
+          <span class="rail-dot" aria-hidden="true"></span>
+        </li>
+        <li data-chapter="2">
+          <a href="#ch2" class="rail-link">
+            <span class="rail-num">02</span>
+            <span class="rail-title">Logic Gates & Adder</span>
+          </a>
+          <span class="rail-dot" aria-hidden="true"></span>
+        </li>
+        <li data-chapter="3" class="rail-coming">
+          <span class="rail-num">03</span>
+          <span class="rail-title">Transistors & Memory</span>
+          <span class="rail-badge">Soon</span>
+        </li>
+        <li data-chapter="4" class="rail-coming">
+          <span class="rail-num">04</span>
+          <span class="rail-title">Architecture & ISA</span>
+          <span class="rail-badge">Soon</span>
+        </li>
+        <li data-chapter="5" class="rail-coming">
+          <span class="rail-num">05</span>
+          <span class="rail-title">Neural Nets & AI</span>
+          <span class="rail-badge">Soon</span>
+        </li>
+      </ol>
+      <div class="rail-sound" aria-hidden="false">
+        <button class="sound-toggle" id="btnSound" aria-pressed="true" aria-label="Toggle sound">
+          <span class="sound-icon">🔊</span>
+          <span class="sound-label">Sound</span>
+        </button>
+      </div>
+    </div>
+  </nav>
+
+  <main id="main" role="main">
+    <section id="ch1" class="chapter reveal" data-chapter="1" aria-labelledby="ch1-title">
+      <div class="chapter-container">
+        <header class="chapter-header">
+          <span class="chapter-badge">Chapter 1</span>
+          <h2 id="ch1-title">Electrons & Voltage</h2>
+          <p class="chapter-lead">Electric current isn't a flow of energy — it's a drift of charge. Adjust voltage and resistance to see how the electric field pushes electrons through a conductor.</p>
+        </header>
+
+        <div class="chapter-body">
+          <div class="simulation-panel" id="ch1-sim">
+            <canvas id="ch1-canvas" aria-label="Circuit simulation: battery, switch, resistor, and electron drift"></canvas>
+            <div class="sim-overlay" id="ch1-overlay" aria-hidden="true"></div>
+          </div>
+
+          <div class="controls-panel" id="ch1-controls">
+            <div class="control-group">
+              <label for="ch1-voltage">Voltage (V)</label>
+              <div class="slider-row">
+                <input type="range" id="ch1-voltage" min="0" max="12" step="0.1" value="5" aria-describedby="ch1-voltage-val">
+                <output id="ch1-voltage-val" class="slider-value tabular-nums">5.0 V</output>
+              </div>
+            </div>
+
+            <div class="control-group">
+              <label for="ch1-resistance">Resistance (Ω)</label>
+              <div class="slider-row">
+                <input type="range" id="ch1-resistance" min="10" max="500" step="1" value="100" aria-describedby="ch1-resistance-val">
+                <output id="ch1-resistance-val" class="slider-value tabular-nums">100 Ω</output>
+              </div>
+            </div>
+
+            <div class="control-group switch-group">
+              <label class="switch-label">
+                <input type="checkbox" id="ch1-switch" checked>
+                <span class="switch-slider" aria-hidden="true"></span>
+                <span class="switch-text">Circuit <span id="ch1-switch-state">ON</span></span>
+              </label>
+            </div>
+
+            <div class="readouts" role="status" aria-live="polite">
+              <div class="readout">
+                <span class="readout-label">Current</span>
+                <span class="readout-value tabular-nums" id="ch1-current">50.0 mA</span>
+              </div>
+              <div class="readout">
+                <span class="readout-label">Power</span>
+                <span class="readout-value tabular-nums" id="ch1-power">250.0 mW</span>
+              </div>
+            </div>
+
+            <details class="theory-note">
+              <summary>Physics refresher</summary>
+              <p><strong>Ohm's Law:</strong> <code>I = V / R</code> — Current equals voltage divided by resistance.</p>
+              <p><strong>Power:</strong> <code>P = V × I = V² / R</code> — Energy dissipated per second as heat.</p>
+              <p><strong>Electron drift:</strong> In copper at 1 A, electrons drift ~0.1 mm/s — but the <em>field</em> propagates near light speed.</p>
+            </details>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <section id="ch2" class="chapter reveal" data-chapter="2" aria-labelledby="ch2-title">
+      <div class="chapter-container">
+        <header class="chapter-header">
+          <span class="chapter-badge">Chapter 2</span>
+          <h2 id="ch2-title">Logic Gates & 4-Bit Binary Adder</h2>
+          <p class="chapter-lead">Every computation reduces to logic gates. Toggle inputs, trace signals through gates, and watch a 4-bit ripple-carry adder compute sums in real time.</p>
+        </header>
+
+        <div class="chapter-body">
+          <div class="simulation-panel" id="ch2-sim">
+            <canvas id="ch2-canvas" aria-label="Logic gate playground and 4-bit binary adder visualization"></canvas>
+          </div>
+
+          <div class="controls-panel" id="ch2-controls">
+            <div class="control-group">
+              <h3>Basic Gates</h3>
+              <div class="gate-inputs">
+                <label class="binary-toggle">
+                  <span>Input A</span>
+                  <input type="checkbox" id="ch2-input-a" checked>
+                  <span class="toggle-slider" aria-hidden="true"></span>
+                  <span class="toggle-value tabular-nums" id="ch2-a-val">1</span>
+                </label>
+                <label class="binary-toggle">
+                  <span>Input B</span>
+                  <input type="checkbox" id="ch2-input-b">
+                  <span class="toggle-slider" aria-hidden="true"></span>
+                  <span class="toggle-value tabular-nums" id="ch2-b-val">0</span>
+                </label>
+              </div>
+              <div class="gate-outputs" id="ch2-basic-outputs">
+                <div class="gate-output">
+                  <span class="gate-name">AND</span>
+                  <span class="gate-result tabular-nums" id="ch2-and">0</span>
+                </div>
+                <div class="gate-output">
+                  <span class="gate-name">OR</span>
+                  <span class="gate-result tabular-nums" id="ch2-or">1</span>
+                </div>
+                <div class="gate-output">
+                  <span class="gate-name">XOR</span>
+                  <span class="gate-result tabular-nums" id="ch2-xor">1</span>
+                </div>
+                <div class="gate-output">
+                  <span class="gate-name">NOT A</span>
+                  <span class="gate-result tabular-nums" id="ch2-not">0</span>
+                </div>
+              </div>
+            </div>
+
+            <div class="control-group">
+              <h3>4-Bit Ripple-Carry Adder</h3>
+              <div class="adder-inputs">
+                <div class="adder-operand">
+                  <span class="operand-label">A</span>
+                  <div class="bit-row" id="ch2-bits-a">
+                    <label><input type="checkbox" data-bit="3" checked><span class="tabular-nums">8</span></label>
+                    <label><input type="checkbox" data-bit="2"><span class="tabular-nums">4</span></label>
+                    <label><input type="checkbox" data-bit="1"><span class="tabular-nums">2</span></label>
+                    <label><input type="checkbox" data-bit="0" checked><span class="tabular-nums">1</span></label>
+                  </div>
+                  <output class="operand-decimal tabular-nums" id="ch2-dec-a">9</output>
+                </div>
+                <span class="adder-plus">+</span>
+                <div class="adder-operand">
+                  <span class="operand-label">B</span>
+                  <div class="bit-row" id="ch2-bits-b">
+                    <label><input type="checkbox" data-bit="3"><span class="tabular-nums">8</span></label>
+                    <label><input type="checkbox" data-bit="2" checked><span class="tabular-nums">4</span></label>
+                    <label><input type="checkbox" data-bit="1" checked><span class="tabular-nums">2</span></label>
+                    <label><input type="checkbox" data-bit="0"><span class="tabular-nums">1</span></label>
+                  </div>
+                  <output class="operand-decimal tabular-nums" id="ch2-dec-b">6</output>
+                </div>
+              </div>
+              <div class="adder-output">
+                <span class="operand-label">Sum</span>
+                <div class="bit-row" id="ch2-bits-sum">
+                  <span data-bit="3" class="sum-bit tabular-nums">0</span>
+                  <span data-bit="2" class="sum-bit tabular-nums">1</span>
+                  <span data-bit="1" class="sum-bit tabular-nums">1</span>
+                  <span data-bit="0" class="sum-bit tabular-nums">1</span>
+                </div>
+                <output class="operand-decimal tabular-nums" id="ch2-dec-sum">15</output>
+              </div>
+              <div class="carry-display" id="ch2-carries" aria-label="Carry bits"></div>
+            </div>
+
+            <details class="theory-note">
+              <summary>How the adder works</summary>
+              <p>A <strong>full adder</strong> adds three bits (A, B, Carry-in) producing Sum and Carry-out:</p>
+              <pre><code>Sum = A ⊕ B ⊕ Cin
+Cout = (A ∧ B) ∨ (A ∧ Cin) ∨ (B ∧ Cin)</code></pre>
+              <p>Four full adders chained form a <strong>ripple-carry adder</strong> — the carry "ripples" from LSB to MSB. Modern CPUs use faster carry-lookahead adders.</p>
+            </details>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <section id="ch3-placeholder" class="chapter reveal chapter-placeholder" data-chapter="3" aria-labelledby="ch3-title">
+      <div class="chapter-container">
+        <header class="chapter-header">
+          <span class="chapter-badge">Chapter 3</span>
+          <h2 id="ch3-title">Transistors & Memory <span class="coming-badge">Coming Soon</span></h2>
+          <p class="chapter-lead">From MOSFET physics to SRAM/DRAM cells — how a voltage-controlled switch becomes a bit of memory.</p>
+        </header>
+        <div class="placeholder-content">
+          <svg viewBox="0 0 120 120" class="placeholder-icon" aria-hidden="true"><path d="M60 10 L60 50 M40 50 L80 50 M60 50 L60 90 M40 90 L80 90 M50 70 L70 70" fill="none" stroke="currentColor" stroke-width="4" stroke-linecap="round"/></svg>
+          <p>This chapter will feature an interactive MOSFET cross-section and a 6T SRAM cell you can read/write.</p>
+        </div>
+      </div>
+    </section>
+
+    <section id="ch4-placeholder" class="chapter reveal chapter-placeholder" data-chapter="4" aria-labelledby="ch4-title">
+      <div class="chapter-container">
+        <header class="chapter-header">
+          <span class="chapter-badge">Chapter 4</span>
+          <h2 id="ch4-title">Architecture & ISA <span class="coming-badge">Coming Soon</span></h2>
+          <p class="chapter-lead">Registers, ALU, control unit, pipelining — the von Neumann machine brought to life.</p>
+        </header>
+        <div class="placeholder-content">
+          <svg viewBox="0 0 120 120" class="placeholder-icon" aria-hidden="true"><rect x="10" y="20" width="100" height="80" rx="4" fill="none" stroke="currentColor" stroke-width="3"/><path d="M30 40 L90 40 M30 60 L90 60 M30 80 L90 80" fill="none" stroke="currentColor" stroke-width="2"/></svg>
+          <p>This chapter will feature a microcoded CPU simulator with step-through execution.</p>
+        </div>
+      </div>
+    </section>
+
+    <section id="ch5-placeholder" class="chapter reveal chapter-placeholder" data-chapter="5" aria-labelledby="ch5-title">
+      <div class="chapter-container">
+        <header class="chapter-header">
+          <span class="chapter-badge">Chapter 5</span>
+          <h2 id="ch5-title">Neural Nets & AI <span class="coming-badge">Coming Soon</span></h2>
+          <p class="chapter-lead">From perceptrons to transformers — how matrix multiplication and backprop create intelligence.</p>
+        </header>
+        <div class="placeholder-content">
+          <svg viewBox="0 0 120 120" class="placeholder-icon" aria-hidden="true"><circle cx="30" cy="30" r="12" fill="none" stroke="currentColor" stroke-width="3"/><circle cx="90" cy="30" r="12" fill="none" stroke="currentColor" stroke-width="3"/><circle cx="60" cy="90" r="12" fill="none" stroke="currentColor" stroke-width="3"/><path d="M42 30 L48 78 M78 30 L72 78 M30 42 L70 78" fill="none" stroke="currentColor" stroke-width="2"/></svg>
+          <p>This chapter will feature a trainable neuron and a tiny transformer attention visualization.</p>
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <footer class="site-footer" role="contentinfo">
+    <p>Inside a Machine: From Electron to AI — Interactive scrollytelling for curious engineers.</p>
+    <p class="footer-note">Built with vanilla HTML/CSS/JS. No frameworks, no build step.</p>
+  </footer>
+
+  <script type="module" src="app.js"></script>
+</body>
+</html>
