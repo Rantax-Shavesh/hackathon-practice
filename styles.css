@@ -318,7 +318,7 @@ pre code { background: none; padding: 0; color: var(--text-dim); }
   min-width: 2.4em;
 }
 
-.rail-title { font-size: 0.8rem; font-weight: 500; }
+.rail-title { font-size: 0.8rem; font-weight: 500; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; max-width: 120px; }
 
 .rail-dot {
   position: absolute;
@@ -957,6 +957,7 @@ main { padding-left: var(--rail-width); min-height: 100vh; }
 
 .share-input {
   flex: 1;
+  min-width: 120px;
   background: var(--bg);
   border: 1px solid var(--border);
   border-radius: 8px;
