@@ -17,6 +17,12 @@ const lerp = (a, b, t) => a + (b - a) * t;
 const rand = (min, max) => Math.random() * (max - min) + min;
 const randInt = (min, max) => Math.floor(Math.random() * (max - min + 1)) + min;
 
+// Guard against NaN/Infinity in numeric outputs
+const safeNum = (v, fallback = 0) => {
+  const n = Number(v);
+  return Number.isFinite(n) ? n : fallback;
+};
+
 function setupHiDPI(canvas) {
   const dpr = window.devicePixelRatio || 1;
   const rect = canvas.getBoundingClientRect();
@@ -214,12 +220,12 @@ class CircuitSim {
 
   getCurrent() {
     if (!this.switchOn) return 0;
-    return this.voltage / this.resistance;
+    return safeNum(this.voltage / Math.max(this.resistance, 1));
   }
 
   getPower() {
     const i = this.getCurrent();
-    return this.voltage * i;
+    return safeNum(this.voltage * i);
   }
 
   getDriftSpeed() {
@@ -564,7 +570,7 @@ class CircuitSim {
 
   animate() {
     const now = performance.now();
-    const dt = (now - (this.lastTime || now)) / 1000;
+    const dt = Math.min((now - (this.lastTime || now)) / 1000, 0.05);
     this.lastTime = now;
     this.time += dt;
 
@@ -594,12 +600,12 @@ class LogicSim {
     this.width = width;
     this.height = height;
     this.dpr = dpr;
-    onResize(this.canvas, (ctx, w, h, dpr) => {
+    this.resizeCleanup = onResize(this.canvas, (ctx, w, h, dpr) => {
       this.ctx = ctx;
       this.width = w;
       this.height = h;
       this.dpr = dpr;
-      this.layoutGates();
+      this.layoutComponents();
     });
   }
 
@@ -1133,7 +1139,7 @@ class LogicSim {
 
   animate() {
     const now = performance.now();
-    const dt = (now - (this.lastTime || now)) / 1000;
+    const dt = Math.min((now - (this.lastTime || now)) / 1000, 0.05);
     this.lastTime = now;
     this.time += dt;
     this.pulsePhase += dt * 2;
@@ -1314,7 +1320,7 @@ class CPUSim {
     const freqHz = this.clockMHz * 1e6;
     const dynamicPower = C * this.voltage * this.voltage * freqHz * this.workload;
     const staticPower = 0.5 * this.voltage * Math.exp((this.temperature - 25) / 50); // Leakage
-    return (dynamicPower + staticPower) * 1e-3; // Convert to Watts (scaled)
+    return safeNum((dynamicPower + staticPower) * 1e-3); // Convert to Watts (scaled)
   }
 
   computeThroughput() {
@@ -1612,7 +1618,7 @@ class NeuralNetSim {
     this.width = width;
     this.height = height;
     this.dpr = dpr;
-    onResize(this.canvas, (ctx, w, h, dpr) => {
+    this.resizeCleanup = onResize(this.canvas, (ctx, w, h, dpr) => {
       this.ctx = ctx;
       this.width = w;
       this.height = h;
@@ -1673,7 +1679,11 @@ class NeuralNetSim {
   // Activation functions
   relu(x) { return Math.max(0, x); }
   reluDeriv(x) { return x > 0 ? 1 : 0; }
-  sigmoid(x) { return 1 / (1 + Math.exp(-x)); }
+  sigmoid(x) {
+    // Clamp input to prevent Math.exp overflow
+    const xClamped = clamp(x, -700, 700);
+    return safeNum(1 / (1 + Math.exp(-xClamped)));
+  }
   sigmoidDeriv(x) { const s = this.sigmoid(x); return s * (1 - s); }
 
   forward(input) {
@@ -2249,7 +2259,10 @@ class CustomMachineSim {
   }
 
   relu(x) { return Math.max(0, x); }
-  sigmoid(x) { return 1 / (1 + Math.exp(-x)); }
+  sigmoid(x) {
+    const xClamped = clamp(x, -700, 700);
+    return safeNum(1 / (1 + Math.exp(-xClamped)));
+  }
 
   forwardNeural(inputs) {
     // Hidden layer
@@ -2441,7 +2454,7 @@ class CustomMachineSim {
     const freqHz = this.clockMHz * 1e6;
     const dynamicPower = C * this.voltage * this.voltage * freqHz * this.workload;
     const staticPower = 0.5 * this.voltage * Math.exp((this.temperature - 25) / 50);
-    this.power = (dynamicPower + staticPower) * 1e-3;
+    this.power = safeNum((dynamicPower + staticPower) * 1e-3);
 
     const ambient = 25;
     const Rth = 1.0 / (this.cooling / 100);
@@ -2574,13 +2587,19 @@ class CustomMachineSim {
     const { ctx } = this;
     const r = this.machineRect;
 
-    // Machine package outline
+    // Machine package outline with running pulse
+    const pulse = this.running ? 0.5 + 0.5 * Math.sin(this.time * 4) : 1;
     ctx.fillStyle = '#161c26';
-    ctx.strokeStyle = '#333e4d';
-    ctx.lineWidth = 2;
+    ctx.strokeStyle = this.running ? '#00d4aa' : '#333e4d';
+    ctx.lineWidth = this.running ? 3 : 2;
+    if (this.running) {
+      ctx.shadowColor = 'rgba(0, 212, 170, 0.4)';
+      ctx.shadowBlur = 12 * pulse;
+    }
     this.roundRect(ctx, r.x, r.y, r.w, r.h, 10);
     ctx.fill();
     ctx.stroke();
+    ctx.shadowBlur = 0;
 
     // Logic section (top left)
     const logicX = r.x + 20;
@@ -2628,7 +2647,7 @@ class CustomMachineSim {
     ctx.font = 'bold 10px monospace';
     ctx.fillText('THERMAL LAYER', logicX + 10, thermY + 18);
 
-    // Thermal bar
+    // Thermal bar with glow when hot
     const barX = logicX + 20;
     const barY = thermY + 35;
     const barW = logicW - 40;
@@ -2643,6 +2662,16 @@ class CustomMachineSim {
     ctx.strokeStyle = '#333e4d';
     ctx.lineWidth = 1;
     ctx.strokeRect(barX, barY, barW, barH);
+
+    // Thermal glow when hot
+    if (heatRatio > 0.7) {
+      ctx.shadowColor = heatRatio > 0.9 ? 'rgba(255, 107, 107, 0.5)' : 'rgba(255, 184, 77, 0.4)';
+      ctx.shadowBlur = 10 * (heatRatio - 0.7) / 0.3;
+      ctx.strokeStyle = heatColor;
+      ctx.lineWidth = 2;
+      ctx.strokeRect(barX, barY, barW * heatRatio, barH);
+      ctx.shadowBlur = 0;
+    }
 
     ctx.fillStyle = '#8c96a4';
     ctx.font = '9px monospace';
@@ -2662,7 +2691,7 @@ class CustomMachineSim {
     ctx.font = 'bold 10px monospace';
     ctx.fillText('NEURAL DECISION', logicX + 10, neuralY + 18);
 
-    // Confidence bar
+    // Confidence bar with threshold indicator
     const confBarX = logicX + 20;
     const confBarY = neuralY + 35;
     const confBarW = logicW - 40;
@@ -2676,6 +2705,11 @@ class CustomMachineSim {
     ctx.strokeStyle = '#333e4d';
     ctx.lineWidth = 1;
     ctx.strokeRect(confBarX, confBarY, confBarW, confBarH);
+
+    // Threshold line on confidence bar
+    const thresholdX = confBarX + confBarW * this.decisionThreshold;
+    ctx.fillStyle = '#ffffff';
+    ctx.fillRect(thresholdX - 1, confBarY - 2, 2, confBarH + 4);
 
     ctx.fillStyle = '#8c96a4';
     ctx.font = '9px monospace';

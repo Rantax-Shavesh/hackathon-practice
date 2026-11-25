@@ -985,6 +985,49 @@ main { padding-left: var(--rail-width); min-height: 100vh; }
 .readout[data-state="idle"] { color: var(--text-dim); }
 .readout[data-state="error"] { color: var(--danger); }
 
+/* Machine running pulse */
+@keyframes machine-pulse {
+  0%, 100% { box-shadow: 0 0 0 0 rgba(0, 212, 170, 0.4); }
+  50% { box-shadow: 0 0 0 8px rgba(0, 212, 170, 0.15); }
+}
+
+.machine-running {
+  animation: machine-pulse 2s ease-in-out infinite;
+}
+
+/* Thermal bar glow when hot */
+.thermal-hot {
+  box-shadow: 0 0 12px var(--warn-glow);
+}
+
+.thermal-critical {
+  box-shadow: 0 0 16px var(--danger-glow);
+}
+
+/* Neural confidence threshold line */
+.confidence-threshold {
+  position: absolute;
+  width: 1px;
+  height: 10px;
+  background: var(--accent);
+  top: 50%;
+  transform: translateY(-50%);
+}
+
+/* Share feedback animations */
+@keyframes share-copy {
+  0% { transform: scale(1); opacity: 1; }
+  100% { transform: scale(1.05); opacity: 0.8; }
+}
+
+.share-feedback.copied {
+  animation: share-copy 0.3s ease-out;
+}
+
+.share-feedback.error {
+  animation: share-copy 0.3s ease-out;
+}
+
 /* ==========================================================================
    Theory Notes
    ========================================================================== */
