@@ -41,19 +41,23 @@
           </a>
           <span class="rail-dot" aria-hidden="true"></span>
         </li>
-        <li data-chapter="3" class="rail-coming">
-          <span class="rail-num">03</span>
-          <span class="rail-title">Transistors & Memory</span>
-          <span class="rail-badge">Soon</span>
+        <li data-chapter="3">
+          <a href="#ch3" class="rail-link">
+            <span class="rail-num">03</span>
+            <span class="rail-title">CPU Clock, Heat & Scale</span>
+          </a>
+          <span class="rail-dot" aria-hidden="true"></span>
         </li>
-        <li data-chapter="4" class="rail-coming">
-          <span class="rail-num">04</span>
-          <span class="rail-title">Architecture & ISA</span>
-          <span class="rail-badge">Soon</span>
+        <li data-chapter="4">
+          <a href="#ch4" class="rail-link">
+            <span class="rail-num">04</span>
+            <span class="rail-title">Neural Network Learning</span>
+          </a>
+          <span class="rail-dot" aria-hidden="true"></span>
         </li>
         <li data-chapter="5" class="rail-coming">
           <span class="rail-num">05</span>
-          <span class="rail-title">Neural Nets & AI</span>
+          <span class="rail-title">Transformers & LLMs</span>
           <span class="rail-badge">Soon</span>
         </li>
       </ol>
@@ -228,30 +232,193 @@ Cout = (A ∧ B) ∨ (A ∧ Cin) ∨ (B ∧ Cin)</code></pre>
       </div>
     </section>
 
-    <section id="ch3-placeholder" class="chapter reveal chapter-placeholder" data-chapter="3" aria-labelledby="ch3-title">
+    <section id="ch3" class="chapter reveal" data-chapter="3" aria-labelledby="ch3-title">
       <div class="chapter-container">
         <header class="chapter-header">
           <span class="chapter-badge">Chapter 3</span>
-          <h2 id="ch3-title">Transistors & Memory <span class="coming-badge">Coming Soon</span></h2>
-          <p class="chapter-lead">From MOSFET physics to SRAM/DRAM cells — how a voltage-controlled switch becomes a bit of memory.</p>
+          <h2 id="ch3-title">CPU Clock Speed, Heat & Scale</h2>
+          <p class="chapter-lead">From 740 kHz to 5+ GHz — explore how clock speed drives instruction throughput, generates heat, and triggers thermal throttling. Drag the scrubber to see the physics of scaling.</p>
         </header>
-        <div class="placeholder-content">
-          <svg viewBox="0 0 120 120" class="placeholder-icon" aria-hidden="true"><path d="M60 10 L60 50 M40 50 L80 50 M60 50 L60 90 M40 90 L80 90 M50 70 L70 70" fill="none" stroke="currentColor" stroke-width="4" stroke-linecap="round"/></svg>
-          <p>This chapter will feature an interactive MOSFET cross-section and a 6T SRAM cell you can read/write.</p>
+
+        <div class="chapter-body">
+          <div class="simulation-panel" id="ch3-sim">
+            <canvas id="ch3-canvas" aria-label="CPU simulator: die heat map, clock speed, throughput, and thermal throttling"></canvas>
+          </div>
+
+          <div class="controls-panel" id="ch3-controls">
+            <div class="control-group">
+              <label for="ch3-clock">Clock Speed</label>
+              <div class="slider-row">
+                <input type="range" id="ch3-clock" min="0.74" max="5500" step="1" value="3000" aria-describedby="ch3-clock-val">
+                <output id="ch3-clock-val" class="slider-value tabular-nums">3.0 GHz</output>
+              </div>
+            </div>
+
+            <div class="control-group">
+              <label for="ch3-voltage">Core Voltage (V)</label>
+              <div class="slider-row">
+                <input type="range" id="ch3-voltage" min="0.6" max="1.5" step="0.01" value="1.1" aria-describedby="ch3-voltage-val">
+                <output id="ch3-voltage-val" class="slider-value tabular-nums">1.10 V</output>
+              </div>
+            </div>
+
+            <div class="control-group">
+              <label for="ch3-cooling">Cooling Capacity (W)</label>
+              <div class="slider-row">
+                <input type="range" id="ch3-cooling" min="15" max="250" step="1" value="65" aria-describedby="ch3-cooling-val">
+                <output id="ch3-cooling-val" class="slider-value tabular-nums">65 W</output>
+              </div>
+            </div>
+
+            <div class="control-group">
+              <label for="ch3-workload">Workload Intensity</label>
+              <div class="slider-row">
+                <input type="range" id="ch3-workload" min="0" max="100" step="1" value="80" aria-describedby="ch3-workload-val">
+                <output id="ch3-workload-val" class="slider-value tabular-nums">80%</output>
+              </div>
+            </div>
+
+            <div class="control-group">
+              <label class="switch-label">
+                <input type="checkbox" id="ch3-throttle" checked>
+                <span class="switch-slider" aria-hidden="true"></span>
+                <span class="switch-text">Thermal Throttling <span id="ch3-throttle-state">ON</span></span>
+              </label>
+            </div>
+
+            <div class="readouts" role="status" aria-live="polite">
+              <div class="readout">
+                <span class="readout-label">Throughput</span>
+                <span class="readout-value tabular-nums" id="ch3-throughput">24.0 GIPS</span>
+              </div>
+              <div class="readout">
+                <span class="readout-label">Temperature</span>
+                <span class="readout-value tabular-nums" id="ch3-temp">58 °C</span>
+              </div>
+              <div class="readout">
+                <span class="readout-label">Power Draw</span>
+                <span class="readout-value tabular-nums" id="ch3-power">48.2 W</span>
+              </div>
+              <div class="readout">
+                <span class="readout-label">Throttle</span>
+                <span class="readout-value tabular-nums" id="ch3-throttle-pct" data-throttling="false">0%</span>
+              </div>
+            </div>
+
+            <div class="preset-row">
+              <label class="preset-btn" data-preset="4004"><input type="radio" name="cpu-preset" value="4004">Intel 4004 (740 kHz)</label>
+              <label class="preset-btn" data-preset="8086"><input type="radio" name="cpu-preset" value="8086">Intel 8086 (5 MHz)</label>
+              <label class="preset-btn" data-preset="pentium"><input type="radio" name="cpu-preset" value="pentium">Pentium (60 MHz)</label>
+              <label class="preset-btn" data-preset="core2"><input type="radio" name="cpu-preset" value="core2">Core 2 Duo (2.6 GHz)</label>
+              <label class="preset-btn" data-preset="ryzen"><input type="radio" name="cpu-preset" value="ryzen">Ryzen 9 (4.7 GHz)</label>
+              <label class="preset-btn" data-preset="modern"><input type="radio" name="cpu-preset" value="modern" checked>Modern (5.2 GHz)</label>
+            </div>
+
+            <details class="theory-note">
+              <summary>Physics of scaling</summary>
+              <p><strong>Dynamic Power:</strong> <code>P = C × V² × f</code> — Power scales linearly with frequency and quadratically with voltage.</p>
+              <p><strong>Thermal Throttling:</strong> When temperature exceeds T<sub>junction</sub> (typically 100°C), the CPU reduces frequency/voltage to prevent damage.</p>
+              <p><strong>Dennard Scaling Ended:</strong> ~2006 — voltage could no longer scale with frequency, ending "free" performance gains.</p>
+            </details>
+          </div>
         </div>
       </div>
     </section>
 
-    <section id="ch4-placeholder" class="chapter reveal chapter-placeholder" data-chapter="4" aria-labelledby="ch4-title">
+    <section id="ch4" class="chapter reveal" data-chapter="4" aria-labelledby="ch4-title">
       <div class="chapter-container">
         <header class="chapter-header">
           <span class="chapter-badge">Chapter 4</span>
-          <h2 id="ch4-title">Architecture & ISA <span class="coming-badge">Coming Soon</span></h2>
-          <p class="chapter-lead">Registers, ALU, control unit, pipelining — the von Neumann machine brought to life.</p>
+          <h2 id="ch4-title">How a Neural Network Actually Learns</h2>
+          <p class="chapter-lead">Place points of two classes, then watch a tiny neural network learn the decision boundary. Step through epochs to see gradients flow and loss descend.</p>
         </header>
-        <div class="placeholder-content">
-          <svg viewBox="0 0 120 120" class="placeholder-icon" aria-hidden="true"><rect x="10" y="20" width="100" height="80" rx="4" fill="none" stroke="currentColor" stroke-width="3"/><path d="M30 40 L90 40 M30 60 L90 60 M30 80 L90 80" fill="none" stroke="currentColor" stroke-width="2"/></svg>
-          <p>This chapter will feature a microcoded CPU simulator with step-through execution.</p>
+
+        <div class="chapter-body">
+          <div class="simulation-panel" id="ch4-sim">
+            <canvas id="ch4-canvas" aria-label="Neural network playground: 2D classification with live decision boundary and loss curve"></canvas>
+          </div>
+
+          <div class="controls-panel" id="ch4-controls">
+            <div class="control-group">
+              <h3>Data</h3>
+              <div class="btn-row">
+                <button class="btn btn-primary" id="ch4-clear">Clear Points</button>
+                <button class="btn btn-secondary" id="ch4-random">Random Data</button>
+                <button class="btn btn-secondary" id="ch4-spiral">Spiral</button>
+                <button class="btn btn-secondary" id="ch4-xor">XOR Pattern</button>
+              </div>
+              <p class="control-hint">Click canvas to add points. Shift+click for Class 1 (blue), Class 0 (orange).</p>
+            </div>
+
+            <div class="control-group">
+              <h3>Network Architecture</h3>
+              <div class="slider-row">
+                <label for="ch4-hidden">Hidden Units</label>
+                <input type="range" id="ch4-hidden" min="2" max="32" step="2" value="8" aria-describedby="ch4-hidden-val">
+                <output id="ch4-hidden-val" class="slider-value tabular-nums">8</output>
+              </div>
+              <div class="slider-row">
+                <label for="ch4-layers">Hidden Layers</label>
+                <input type="range" id="ch4-layers" min="1" max="3" step="1" value="2" aria-describedby="ch4-layers-val">
+                <output id="ch4-layers-val" class="slider-value tabular-nums">2</output>
+              </div>
+            </div>
+
+            <div class="control-group">
+              <h3>Training</h3>
+              <div class="slider-row">
+                <label for="ch4-lr">Learning Rate</label>
+                <input type="range" id="ch4-lr" min="0.01" max="1.0" step="0.01" value="0.1" aria-describedby="ch4-lr-val">
+                <output id="ch4-lr-val" class="slider-value tabular-nums">0.10</output>
+              </div>
+              <div class="slider-row">
+                <label for="ch4-batch">Batch Size</label>
+                <input type="range" id="ch4-batch" min="1" max="64" step="1" value="16" aria-describedby="ch4-batch-val">
+                <output id="ch4-batch-val" class="slider-value tabular-nums">16</output>
+              </div>
+            </div>
+
+            <div class="control-group">
+              <div class="btn-row">
+                <button class="btn btn-primary" id="ch4-start" data-training="false">Start Training</button>
+                <button class="btn btn-secondary" id="ch4-step">Step Epoch</button>
+                <button class="btn btn-secondary" id="ch4-reset">Reset Network</button>
+              </div>
+            </div>
+
+            <div class="readouts" role="status" aria-live="polite">
+              <div class="readout">
+                <span class="readout-label">Epoch</span>
+                <span class="readout-value tabular-nums" id="ch4-epoch">0</span>
+              </div>
+              <div class="readout">
+                <span class="readout-label">Loss</span>
+                <span class="readout-value tabular-nums" id="ch4-loss">—</span>
+              </div>
+              <div class="readout">
+                <span class="readout-label">Accuracy</span>
+                <span class="readout-value tabular-nums" id="ch4-acc">—</span>
+              </div>
+              <div class="readout">
+                <span class="readout-label">Points</span>
+                <span class="readout-value tabular-nums" id="ch4-points">0</span>
+              </div>
+            </div>
+
+            <div class="control-group">
+              <label for="ch4-loss-chart">Loss Over Epochs</label>
+              <div class="loss-chart-wrap">
+                <canvas id="ch4-loss-chart" aria-label="Loss over epochs"></canvas>
+              </div>
+            </div>
+
+            <details class="theory-note">
+              <summary>How backpropagation works</summary>
+              <p><strong>Forward Pass:</strong> Input → Hidden layers (ReLU) → Output (Sigmoid) → Binary Cross-Entropy Loss.</p>
+              <p><strong>Backward Pass:</strong> Chain rule computes gradients ∂L/∂w for each weight. Weights update: <code>w ← w − η × ∂L/∂w</code>.</p>
+              <p><strong>Decision Boundary:</strong> The network learns a non-linear boundary. More hidden units = more complex boundaries (but risk overfitting).</p>
+            </details>
+          </div>
         </div>
       </div>
     </section>
@@ -260,12 +427,12 @@ Cout = (A ∧ B) ∨ (A ∧ Cin) ∨ (B ∧ Cin)</code></pre>
       <div class="chapter-container">
         <header class="chapter-header">
           <span class="chapter-badge">Chapter 5</span>
-          <h2 id="ch5-title">Neural Nets & AI <span class="coming-badge">Coming Soon</span></h2>
-          <p class="chapter-lead">From perceptrons to transformers — how matrix multiplication and backprop create intelligence.</p>
+          <h2 id="ch5-title">Transformers & LLMs <span class="coming-badge">Coming Soon</span></h2>
+          <p class="chapter-lead">Attention mechanisms, token embeddings, and how next-token prediction scales to language understanding.</p>
         </header>
         <div class="placeholder-content">
           <svg viewBox="0 0 120 120" class="placeholder-icon" aria-hidden="true"><circle cx="30" cy="30" r="12" fill="none" stroke="currentColor" stroke-width="3"/><circle cx="90" cy="30" r="12" fill="none" stroke="currentColor" stroke-width="3"/><circle cx="60" cy="90" r="12" fill="none" stroke="currentColor" stroke-width="3"/><path d="M42 30 L48 78 M78 30 L72 78 M30 42 L70 78" fill="none" stroke="currentColor" stroke-width="2"/></svg>
-          <p>This chapter will feature a trainable neuron and a tiny transformer attention visualization.</p>
+          <p>This chapter will feature a token-level attention visualization and a tiny GPT-style model.</p>
         </div>
       </div>
     </section>
